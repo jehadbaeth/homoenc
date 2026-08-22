@@ -1,5 +1,7 @@
 # homoenc
 
+**Full study: [FHE Feasibility Study — CKKS Performance for Orbit Propagation](https://jehadbaeth.github.io/homoenc/)**
+
 Hands-on exploration of fully homomorphic encryption (FHE), prompted by Google's
 HEIR announcement, aimed at a concrete question: could OKAPI:Orbits host its
 space situational awareness (SSA) / collision-avoidance software while letting
@@ -19,7 +21,8 @@ find out concretely where FHE helps and where it breaks.
   SEAL directly via a hand-written JNA binding to SEAL's `sealc` C ABI (no
   viable native Java FHE library exists).
 - `benchmarks/` — performance benchmarks for both stacks (latency, memory,
-  ciphertext size) and the resulting report.
+  ciphertext size) and the source of the report below.
+- `docs/` — the published study (served via GitHub Pages at the link above).
 
 ## Key findings, short version
 
