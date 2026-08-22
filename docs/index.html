@@ -146,6 +146,17 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
 
 .source-list{ font-size:13px; margin:12px 0 0; padding-left:20px; }
 .source-list li{ margin-bottom:5px; }
+
+.tabbed{ margin:18px 0 24px; }
+.tab-nav{ display:flex; gap:4px; border-bottom:1px solid var(--rule); margin-bottom:16px; }
+.tab-btn{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--ink-soft); background:none; border:none; padding:8px 4px; margin:0 14px -1px 0;
+  cursor:pointer; border-bottom:2px solid transparent;
+}
+.tab-btn:hover{ color:var(--ink); }
+.tab-btn.active{ color:var(--accent-ink); border-bottom-color:var(--accent); }
+.tab-panel[hidden]{ display:none; }
 </style>
 
 <div class="masthead">
@@ -435,13 +446,21 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   <p>Primitive operations first — these are what any encrypted evaluation is built from.</p>
 
   <div class="legend"><span><span class="swatch java"></span>Java / SEAL via JNA</span><span><span class="swatch py"></span>Python / TenSEAL</span></div>
-  <div class="bars" id="bars-primitives"></div>
 
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>Operation</th><th>Stack</th><th>Mean (ms)</th><th>Median</th><th>Min</th><th>Max</th><th>P95</th></tr></thead>
-      <tbody id="tbl-primitives"></tbody>
-    </table>
+  <div class="tabbed" data-tabbed>
+    <div class="tab-nav">
+      <button class="tab-btn active" type="button">Chart</button>
+      <button class="tab-btn" type="button">Table</button>
+    </div>
+    <div class="tab-panel"><div class="bars" id="bars-primitives"></div></div>
+    <div class="tab-panel" hidden>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Operation</th><th>Stack</th><th>Mean (ms)</th><th>Median</th><th>Min</th><th>Max</th><th>P95</th></tr></thead>
+          <tbody id="tbl-primitives"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <h3>Full polynomial evaluations — the workload that matters</h3>
@@ -449,13 +468,21 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   (mean anomaly), and a bivariate degree‑14×2 evaluation once eccentricity is hidden too.</p>
 
   <div class="legend"><span><span class="swatch java"></span>Java</span><span><span class="swatch py"></span>Python</span></div>
-  <div class="bars" id="bars-eval"></div>
 
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>Operation</th><th>Stack</th><th>Mean (ms)</th><th>Median</th><th>Min</th><th>Max</th><th>P95</th></tr></thead>
-      <tbody id="tbl-eval"></tbody>
-    </table>
+  <div class="tabbed" data-tabbed>
+    <div class="tab-nav">
+      <button class="tab-btn active" type="button">Chart</button>
+      <button class="tab-btn" type="button">Table</button>
+    </div>
+    <div class="tab-panel"><div class="bars" id="bars-eval"></div></div>
+    <div class="tab-panel" hidden>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Operation</th><th>Stack</th><th>Mean (ms)</th><th>Median</th><th>Min</th><th>Max</th><th>P95</th></tr></thead>
+          <tbody id="tbl-eval"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <p>The crossover is the interesting part: Java is <b>2.1× faster</b> on the single‑variable evaluation
@@ -479,7 +506,23 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   <h2>Peak resident set size</h2>
   <p>One process, one context, the full benchmark run (context + all timed operations) end to end.</p>
   <div class="legend"><span><span class="swatch java"></span>Java</span><span><span class="swatch py"></span>Python</span></div>
-  <div class="bars" id="bars-mem"></div>
+
+  <div class="tabbed" data-tabbed>
+    <div class="tab-nav">
+      <button class="tab-btn active" type="button">Chart</button>
+      <button class="tab-btn" type="button">Table</button>
+    </div>
+    <div class="tab-panel"><div class="bars" id="bars-mem"></div></div>
+    <div class="tab-panel" hidden>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Stack</th><th>Peak RSS</th></tr></thead>
+          <tbody id="tbl-mem"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <p>Java's 6.3 GB peak — even after fixing the leak above — reflects the <a class="acr" href="https://en.wikipedia.org/wiki/Java_virtual_machine" title="Java Virtual Machine: the runtime that executes Java bytecode; it reserves its own managed heap separately from any native memory a library allocates.">JVM</a>'s own heap reservation
   stacked on top of SEAL's native pool, plus JNA's marshalling overhead on every call across the
   boundary. TenSEAL wraps the same SEAL library but manages ciphertext lifetime through Python's
@@ -699,5 +742,28 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
     ['stage4_bivariate_degree14x2_full_eval','Java',2134.87,2133.86,2129.68,2155.28,2147.64],
     ['stage4_bivariate_degree14x2_full_eval','Python',1094.28,1094.52,1090.74,1100.12,1097.37]
   ]);
+
+  (function(){
+    var body = document.getElementById('tbl-mem');
+    [['peak RSS','Java','6.32 GB (6,781,681,664 bytes)'],
+     ['peak RSS','Python','1.69 GB (1,811,988,480 bytes)']].forEach(function(r){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+r[0]+'</td><td><span class="tag '+(r[1]==='Java'?'java':'py')+'">'+r[1]+'</span></td><td>'+r[2]+'</td>';
+      body.appendChild(tr);
+    });
+  })();
+
+  document.querySelectorAll('[data-tabbed]').forEach(function(box){
+    var btns = Array.prototype.slice.call(box.querySelectorAll('.tab-btn'));
+    var panels = Array.prototype.slice.call(box.querySelectorAll('.tab-panel'));
+    btns.forEach(function(btn, i){
+      btn.addEventListener('click', function(){
+        btns.forEach(function(b){ b.classList.remove('active'); });
+        panels.forEach(function(p){ p.hidden = true; });
+        btn.classList.add('active');
+        panels[i].hidden = false;
+      });
+    });
+  });
 })();
 </script>
