@@ -144,19 +144,42 @@ public class Stage04EncryptedEccentricity {
         for (int j = 0; j <= DE; j++) {
             Pointer term = q[j];
             for (int s = 0; s < j; s++) {
-                term = ctx.multiply(term, bringToLevel(ctx, tE, DM + s));
+                Pointer level = bringToLevel(ctx, tE, DM + s);
+                Pointer next = ctx.multiply(term, level);
+                ctx.destroy(term);
+                if (level != tE) ctx.destroy(level);
+                term = next;
             }
             for (int s = 0; s < DE - j; s++) {
-                term = ctx.multiply(term, bringToLevel(ctx, ctx.encrypt(1.0), DM + j + s));
+                Pointer one = ctx.encrypt(1.0);
+                Pointer level = bringToLevel(ctx, one, DM + j + s);
+                if (level != one) ctx.destroy(one);
+                Pointer next = ctx.multiply(term, level);
+                ctx.destroy(term);
+                ctx.destroy(level);
+                term = next;
             }
-            sum = (sum == null) ? term : ctx.add(sum, term);
+            if (sum == null) {
+                sum = term;
+            } else {
+                Pointer newSum = ctx.add(sum, term);
+                ctx.destroy(sum);
+                ctx.destroy(term);
+                sum = newSum;
+            }
         }
-        return ctx.decrypt(sum);
+        double result = ctx.decrypt(sum);
+        ctx.destroy(sum);
+        return result;
     }
 
     static Pointer bringToLevel(CkksContext ctx, Pointer cipherAtLevel0, int targetLevel) {
         Pointer result = cipherAtLevel0;
-        for (int lvl = 0; lvl < targetLevel; lvl++) result = ctx.modSwitchToNext(result);
+        for (int lvl = 0; lvl < targetLevel; lvl++) {
+            Pointer next = ctx.modSwitchToNext(result);
+            if (result != cipherAtLevel0) ctx.destroy(result);
+            result = next;
+        }
         return result;
     }
 }

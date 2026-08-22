@@ -84,13 +84,19 @@ public class Stage03ClosedFormPolynomial {
         Pointer tAtLevel = tCipher;
 
         for (int i = n - 1; i >= 0; i--) {
-            result = ctx.multiply(result, tAtLevel);
-            Pointer coeffPlain = ctx.encodeAt(ascendingCoeffs[i], ctx.parmsIdOf(result), ctx.scaleOf(result));
-            result = ctx.addPlain(result, coeffPlain);
+            Pointer multiplied = ctx.multiply(result, tAtLevel);
+            ctx.destroy(result);
+            Pointer coeffPlain = ctx.encodeAt(ascendingCoeffs[i], ctx.parmsIdOf(multiplied), ctx.scaleOf(multiplied));
+            result = ctx.addPlain(multiplied, coeffPlain);
+            ctx.destroy(multiplied);
+            ctx.destroyPlain(coeffPlain);
             if (i > 0) {
-                tAtLevel = ctx.modSwitchToNext(tAtLevel);
+                Pointer nextT = ctx.modSwitchToNext(tAtLevel);
+                if (tAtLevel != tCipher) ctx.destroy(tAtLevel);
+                tAtLevel = nextT;
             }
         }
+        if (tAtLevel != tCipher) ctx.destroy(tAtLevel);
         return result;
     }
 }

@@ -77,6 +77,8 @@ public interface SealC extends Library {
     int Ciphertext_Scale(Pointer thisptr, DoubleByReference scale);
     int Ciphertext_SetScale(Pointer thisptr, double scale);
     int Ciphertext_ParmsId(Pointer thisptr, long[] parmsId);
+    int Ciphertext_SaveSize(Pointer thisptr, byte comprMode, LongByReference result);
+    int Ciphertext_Save(Pointer thisptr, byte[] outptr, long size, byte comprMode, LongByReference outBytes);
 
     int Plaintext_Create1(Pointer memoryPoolHandle, PointerByReference plainText);
     int Plaintext_Destroy(Pointer thisptr);

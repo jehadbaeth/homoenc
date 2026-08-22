@@ -1,0 +1,6 @@
+Context: poly_modulus_degree=32768, coeff_mod_bit_sizes=[60]+[40]*16+[60] (18 primes, 16 usable multiplicative levels), global_scale=2^40
+Runtime: python3.13, TenSEAL (SEAL under the hood), venv at ../.venv
+Host: darwin (macOS), aarch64 -- same machine as the Java run, for direct comparability
+peak_rss_bytes=1811988480
+fresh_ciphertext_bytes=6857674
+depth14_ciphertext_bytes=5274499

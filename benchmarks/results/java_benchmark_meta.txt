@@ -1,0 +1,9 @@
+Context: poly_modulus_degree=32768, coeff_modulus=[60,40x16,60] (18 primes, 16 usable multiplicative levels), initial scale=2^40
+JVM: Homebrew OpenJDK 26.0.1 (gradle's auto-detected toolchain; JDK17 on PATH cannot load class files gradle compiles)
+Run: direct java -cp invocation (not gradle run) wrapped in /usr/bin/time -l, to capture native/off-heap SEAL allocations in peak RSS
+Host: darwin (macOS), aarch64
+peak_rss_bytes=6781681664
+fresh_ciphertext_bytes_uncompressed=8913009
+fresh_ciphertext_bytes_zstd=8947825
+depth14_ciphertext_bytes_uncompressed=1572977
+depth14_ciphertext_bytes_zstd=1579121

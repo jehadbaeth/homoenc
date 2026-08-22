@@ -136,9 +136,21 @@ public class CkksContext {
         check(seal.Evaluator_Multiply(evaluator, x, y, raw, pool), "Evaluator_Multiply");
         Pointer relinearized = newCiphertext();
         check(seal.Evaluator_Relinearize(evaluator, raw, relinKeys, relinearized, pool), "Evaluator_Relinearize");
+        destroy(raw);
         Pointer rescaled = newCiphertext();
         check(seal.Evaluator_RescaleToNext(evaluator, relinearized, rescaled, pool), "Evaluator_RescaleToNext");
+        destroy(relinearized);
         return rescaled;
+    }
+
+    /** Frees the native SEAL ciphertext this pointer refers to. Callers own everything they get back
+     * from this class and must destroy it once done — SEAL's C API has no GC or RAII across the JNA boundary. */
+    public void destroy(Pointer cipher) {
+        seal.Ciphertext_Destroy(cipher);
+    }
+
+    public void destroyPlain(Pointer plain) {
+        seal.Plaintext_Destroy(plain);
     }
 
     /** Drops a ciphertext one level down the modulus chain without rescaling (for level-matching before ops). */
@@ -158,6 +170,13 @@ public class CkksContext {
         Pointer result = newCiphertext();
         check(seal.Evaluator_AddPlain(evaluator, x, plain, result), "Evaluator_AddPlain");
         return result;
+    }
+
+    /** Serialized size in bytes: comprMode 0 = none, 1 = zlib, 2 = zstd. */
+    public long serializedSize(Pointer cipher, byte comprMode) {
+        LongByReference size = new LongByReference();
+        check(seal.Ciphertext_SaveSize(cipher, comprMode, size), "Ciphertext_SaveSize");
+        return size.getValue();
     }
 
     /** Ciphertext * known plaintext scalar, at the ciphertext's current level. No relinearize needed (no new key-switch term). */

@@ -1,0 +1,10 @@
+operation,n,mean_ms,median_ms,min_ms,max_ms,p95_ms
+context_setup_incl_keygen,10,597.1570,576.8693,566.4251,788.3143,788.3143
+encrypt_scalar,30,35.3432,35.3129,34.8901,35.9995,35.9317
+decrypt_scalar,30,21.4998,21.4738,21.3594,21.9226,21.8581
+add_ciphertexts,30,0.8185,0.7827,0.7428,1.7224,0.8698
+add_plain,30,6.1900,6.1766,6.1205,6.3585,6.3540
+multiply_ciphertexts_incl_relin_rescale,30,83.5372,83.5671,82.9891,84.0615,84.0128
+mod_switch_to_next,30,0.2965,0.2648,0.2185,0.7308,0.6940
+stage3_horner_degree14_full_eval,30,661.5883,660.0184,658.1830,701.5096,669.3237
+stage4_bivariate_degree14x2_full_eval,30,2134.8744,2133.8563,2129.6824,2155.2842,2147.6443
