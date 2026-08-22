@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+
+java-stack/build/
+java-stack/.gradle/
+java-stack/native/SEAL/
+
+.DS_Store

@@ -1,0 +1,23 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'net.java.dev.jna:jna:5.14.0'
+}
+
+application {
+    mainClass = System.getProperty('mainClass', 'sgp4fhe.Stage00Roundtrip')
+}
+
+run {
+    systemProperty 'jna.library.path', "${projectDir}/native/SEAL/build/lib"
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
