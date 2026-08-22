@@ -1,4 +1,4 @@
-<title>FHE Feasibility Study — CKKS Performance for Orbit Propagation</title>
+<title>FHE Feasibility Study — CKKS Performance and Privacy for Orbit Propagation</title>
 <style>
 :root{
   --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
@@ -133,13 +133,12 @@ a:hover{ border-bottom-color:var(--accent); }
 
 <div class="masthead">
   <div class="masthead-inner">
-    <div class="eyebrow">Performance report · FHE / CKKS prototype</div>
-    <h1>Can the OKAPI:Orbits FHE prototype carry real traffic?</h1>
-    <p class="subtitle">Head-to-head latency, memory, and payload-size benchmark of the staged SGP4 CKKS
-    prototype in Python (TenSEAL) and Java (JNA → Microsoft SEAL), read against what a stateless
-    encrypt → evaluate → decrypt service would actually cost to run.</p>
+    <div class="eyebrow">Feasibility study · FHE / CKKS prototype</div>
+    <h1>Can CKKS carry real orbit-propagation traffic — and does it actually keep anything private?</h1>
+    <p class="subtitle">A from-scratch, two-language (Python + Java) implementation of an SGP4-shaped
+    orbit-propagation workload under fully homomorphic encryption, benchmarked for latency, memory, and
+    bandwidth, and checked honestly against what it actually promises to keep confidential.</p>
     <div class="meta-row">
-      <span><b>Prepared by</b> OKAPI:Orbits — Engineering</span>
       <span><b>Host</b> Apple M3, 8 cores, 16 GB, macOS 26.5.2</span>
       <span><b>Context</b> poly_modulus_degree=32768, 18 primes (60+40×16+60 bit), scale=2⁴⁰</span>
       <span><b>Reps</b> 5 warmup + 30 timed per op</span>
@@ -152,22 +151,31 @@ a:hover{ border-bottom-color:var(--accent); }
 <section style="margin-top:40px;">
   <div class="section-eyebrow">Abstract</div>
   <p class="wide" style="max-width:70ch; font-size:15px;">
-  OKAPI:Orbits runs space situational awareness and collision-avoidance software on behalf of satellite
-  operators who may not want to hand over their raw orbital data to do it. Fully homomorphic encryption
-  (FHE) is the one class of technique that lets a server compute on data it never gets to see in the
-  clear, so this study asks a narrow, concrete question: using the CKKS scheme, how much would that
-  actually cost, in latency, memory, and bandwidth, for an SGP4-shaped orbit-propagation workload — and
-  is that cost survivable for a real, stateless production service? We built the same staged prototype
-  twice, once in Python against TenSEAL and once in Java against Microsoft SEAL directly, and benchmarked
-  both under an identical CKKS context on the same machine. The finding is a straightforward tradeoff:
-  correctness holds up to sub-meter accuracy and the workload's statelessness makes scaling arithmetic
-  trivial, but the compute cost is roughly five orders of magnitude above the plaintext equivalent, and
-  multiplicative depth is a fixed, pre-committed budget rather than a knob you can turn at runtime.
-  Section-by-section detail, all measured numbers, and an honest bad/good findings list follow below.
+  Fully homomorphic encryption (FHE) is the one class of technique that lets a server compute on data it
+  never gets to see in the clear. That's an attractive property for any service that processes sensitive
+  numerical data on someone else's behalf — orbital tracking data is one example, medical sensor data or
+  financial positions would be others. This study picks a concrete, non-trivial workload — an
+  SGP4-shaped orbit-propagation computation, chosen because it involves an iterative solve that FHE
+  cannot do directly — and asks two separate questions about it: what does it cost, and what does it
+  actually keep confidential? We built the same staged prototype twice, once in Python against TenSEAL
+  and once in Java against Microsoft SEAL directly, and benchmarked both under an identical CKKS context
+  on the same machine. On cost: correctness holds up to sub-meter accuracy and the workload's
+  statelessness makes scaling arithmetic trivial, but compute is roughly five orders of magnitude above
+  the plaintext equivalent, and multiplicative depth is a fixed, pre-committed budget rather than a knob
+  you can turn at runtime. On confidentiality, the honest answer is more mixed than the pitch: the
+  technique used here to work around FHE's lack of division requires the object's orbit <i>shape</i> to be
+  known in the clear, and only its <i>phase</i> — where it is along that orbit right now — stays
+  encrypted. Whether that's an acceptable tradeoff depends entirely on the threat model, and in the cases
+  where confidentiality would matter most, it probably isn't one. Section-by-section detail, all measured
+  numbers, and an honest bad/good findings list follow below.
   </p>
   <p class="wide" style="max-width:70ch; font-size:13px; color:var(--ink-soft);">
   <b>Contents</b> ·
-  <a href="#methodology">Methodology</a> ·
+  <a href="#background">Background</a> ·
+  <a href="#what-was-built">What was built</a> ·
+  <a href="#privacy">Privacy model</a> ·
+  <a href="#reproduce">How to reproduce</a> ·
+  <a href="#methodology">Experimental design</a> ·
   <a href="#latency">Latency</a> ·
   <a href="#memory">Memory</a> ·
   <a href="#bandwidth">Bandwidth</a> ·
@@ -185,8 +193,150 @@ a:hover{ border-bottom-color:var(--accent); }
   <div class="tile"><div class="label">Peak RSS, Python</div><div class="value">1.7 GB</div><div class="sub">one process, one context</div></div>
 </div>
 
+<section id="background">
+  <div class="section-eyebrow">Background</div>
+  <h2>The problem this addresses</h2>
+  <p>Ordinary encryption (AES, TLS, disk encryption) protects data at rest and in transit, but a server
+  that needs to compute on that data has to decrypt it first. Anyone who wants a third party to run a
+  computation without seeing the input — a cloud provider, an analytics vendor, a shared processing
+  service — normally has to either trust that party with the plaintext or keep the computation in-house.
+  Fully homomorphic encryption removes that requirement: it lets specific arithmetic operations
+  (addition, multiplication) run directly on ciphertexts, producing an encrypted result that decrypts to
+  the same answer as if the operation had run on the plaintext.</p>
+  <p><b>CKKS</b> is the FHE scheme used throughout this study. It's built for approximate arithmetic over
+  real numbers rather than exact integers, which makes it a natural fit for physical/engineering
+  computations that already tolerate floating-point error. Its two hard constraints shape everything
+  else in this report:</p>
+  <p><b>1. Multiplicative depth is finite and fixed in advance.</b> Every ciphertext-ciphertext
+  multiplication consumes one "level" from a budget baked into the encryption context at setup time —
+  this context supports exactly 16 sequential multiplications, no more, ever, without re-encrypting under
+  a bigger (and much more expensive) context.</p>
+  <p><b>2. There is no ciphertext/ciphertext division, and no comparison or branching.</b> Anything that
+  needs "divide by an encrypted value" or "if this encrypted value is greater than that one" cannot be
+  expressed directly. That single restriction is why this study exists: real orbit propagation needs
+  exactly that kind of operation, and working around it is the actual engineering content of this
+  project, not a footnote.</p>
+  <p>We picked orbit propagation as the test workload specifically because it is <i>not</i> a toy
+  "add two encrypted numbers" demo. SGP4-style propagation includes solving Kepler's equation
+  (<code>M = E − e·sin(E)</code>) for the eccentric anomaly <code>E</code>, which is normally done with
+  Newton–Raphson iteration — a loop that repeatedly divides by an encrypted quantity and decides when to
+  stop based on comparing an encrypted error to a threshold. Neither operation exists under CKKS. Forcing
+  a real iterative numerical method through FHE's constraints, rather than picking a workload that avoids
+  the problem, is what makes the findings below meaningful.</p>
+</section>
+
+<section id="what-was-built">
+  <div class="section-eyebrow">What was built</div>
+  <h2>A staged prototype, twice</h2>
+  <p>Rather than trying to encrypt the full Newton–Raphson loop directly (which doesn't work — see above),
+  the prototype takes a different route, arrived at through a sequence of staged experiments that each
+  hit a specific wall and then worked around it:</p>
+  <p><b>Stage 0 — round-trip sanity.</b> Encrypt a number, decrypt it, confirm CKKS's approximate
+  arithmetic introduces only the expected small numerical noise. Establishes the error budget everything
+  else is measured against.</p>
+  <p><b>Stage 1–2 — linear operations.</b> Confirm addition, subtraction, and plaintext-multiplication
+  work homomorphically as expected on orbital quantities, and measure how much precision each operation
+  costs.</p>
+  <p><b>Hitting the wall.</b> Attempting Newton–Raphson for Kepler's equation directly under encryption
+  fails immediately: it needs division by an encrypted value at every iteration, and needs to decide when
+  to stop, which CKKS cannot express. Decrypting an intermediate value to check convergence defeats the
+  entire point of encrypting the input.</p>
+  <p><b>Stage 3 — the actual fix: closed-form polynomial evaluation.</b> Instead of solving Kepler's
+  equation homomorphically, fit its solution as a polynomial <i>offline</i>, in plaintext, for a known,
+  fixed orbit shape (semi-major axis <code>a</code>, eccentricity <code>e</code>) — sampling the true
+  solution at many values of mean anomaly <code>M</code> and fitting a degree-14 polynomial in
+  <code>M</code> with ordinary least squares. At runtime, only <code>M</code> is encrypted; the server
+  evaluates the pre-fit polynomial homomorphically using nothing but ciphertext add, multiply, and
+  plaintext-multiply — all operations CKKS actually supports — via Horner's method. This is the core
+  trick this whole study is built around, and it's also the source of the confidentiality limitation
+  discussed below.</p>
+  <p><b>Stage 4+ — extending to a second hidden variable.</b> The same idea, extended to also keep
+  eccentricity <code>e</code> encrypted (not just <code>M</code>), fitting a two-variable (bivariate)
+  polynomial and evaluating it homomorphically over a small pre-agreed range of <code>e</code>. This
+  works, but costs more multiplicative depth per evaluation, and widening the eccentricity range further
+  (attempted, and it's what stage 6 in the source tries) needs more depth than this context's 16-level
+  budget can supply — it fails deterministically, in both languages, exactly as depth theory predicts.</p>
+  <p>The whole thing was built <b>twice, independently</b>: once in Python against
+  <a href="https://github.com/OpenMined/TenSEAL">TenSEAL</a> (a high-level Python wrapper over Microsoft
+  SEAL), and once in Java, hand-written against SEAL's C ABI (<code>sealc</code>) via a JNA binding,
+  because no mature native Java FHE library exists. Building it twice wasn't redundant busywork — it's
+  what let us tell, later, whether a given finding was a property of CKKS itself or an artifact of one
+  particular binding (see the Latency section: some findings turned out to be algorithmic, not
+  language-related, and building both was the only way to know that).</p>
+</section>
+
+<section id="privacy">
+  <div class="section-eyebrow">Privacy model</div>
+  <h2>What actually stays confidential — and what doesn't</h2>
+  <p>This is worth stating plainly and early, because it's easy to read "encrypted orbit propagation" and
+  assume it means the orbital data is confidential end to end. It doesn't. Stage 3's fix — the one
+  everything past it depends on — requires the orbit's <i>shape</i> parameters (<code>a</code>,
+  <code>e</code>) to be known in the clear, in order to build the offline polynomial fit. Only the
+  orbital <i>phase</i> (mean anomaly <code>M</code>, and in the extended stage, <code>e</code> within a
+  narrow pre-agreed band) is ever encrypted. The server that evaluates the polynomial always knows what
+  kind of orbit it's evaluating; it only doesn't know exactly where along that orbit the object currently
+  is.</p>
+  <p>Does that matter in practice? It depends entirely on what's actually sensitive, and the honest answer
+  splits into two very different cases:</p>
+  <p><b>For an object that's already in a public catalog</b> (tracked and published via Space-Track or
+  CelesTrak TLEs, which cover essentially everything trackable from the ground), semi-major axis and
+  eccentricity are already public information. Handing them to the evaluating server in the clear doesn't
+  leak anything about that object's orbit that a public catalog lookup wouldn't already reveal. In this
+  case the design's actual, real confidentiality contribution is protecting the object's <i>current
+  position</i> from the server — which can be a genuinely useful property (e.g. not wanting a shared
+  computation provider to know exactly where something is right now), just a narrower one than "the
+  orbital data stays private."</p>
+  <p><b>For anything else, this breaks down</b> — and these are exactly the cases where someone would
+  actually want confidentiality in the first place:</p>
+  <p>&nbsp;&nbsp;• <b>Undisclosed or uncataloged objects.</b> A newly launched, not-yet-cataloged, or
+  deliberately undisclosed object's shape parameters are themselves the sensitive fact. This design
+  requires exposing exactly that fact to build the fit.</p>
+  <p>&nbsp;&nbsp;• <b>Query-to-object linkage.</b> Even for a cataloged object, revealing
+  <code>(a, e)</code> on a per-request basis tells the evaluating server which specific object a given
+  customer is asking about. That link between "this customer" and "this object" may be sensitive on its
+  own, independent of whether the orbital elements themselves are public anywhere else.</p>
+  <p>&nbsp;&nbsp;• <b>Precision beyond the public record.</b> The polynomial fit needs shape parameters
+  precise enough to keep the fit's error within budget, which can exceed the precision of public TLEs.
+  In that case the server sees a more refined orbital solution than is publicly available — itself a
+  potentially valuable, proprietary piece of information (e.g., revealing precise station-keeping
+  behavior), not something that was already public.</p>
+  <p>The conclusion we draw from this, stated as plainly as we can: <b>this technique protects orbital
+  phase, not orbit identity</b>, and it should not be described or sold as "orbital data stays encrypted
+  end to end" without that caveat attached. It's a legitimate, useful privacy property in the narrow case
+  where shape is already public and only real-time position needs hiding — and it is not a solution at
+  all in the case where the shape itself, or the fact of tracking a particular object, is what needed
+  protecting. We haven't tested mitigations (encrypting shape too runs into the depth wall at low degree,
+  as stage 4+ shows; coarser public bucketing by orbital regime instead of exact elements is untried), so
+  we're not claiming a fix exists — only naming the limitation honestly instead of leaving it implicit.</p>
+</section>
+
+<section id="reproduce">
+  <div class="section-eyebrow">How to reproduce this</div>
+  <h2>Building and running both stacks</h2>
+  <p>Everything in this report, including the benchmark harnesses and raw result files, is in the
+  repository this page is published from. Layout:</p>
+  <p><code>scripts/</code> — the Python/TenSEAL staged prototype (stages 0–6). <code>java-stack/</code> —
+  the Java port, bridging to Microsoft SEAL via a hand-written JNA binding. <code>benchmarks/</code> —
+  the benchmark harnesses for both stacks and this report's source. <code>notes/</code> and
+  <code>java-stack/notes/</code> — full narrative write-ups of each stage's design and findings.</p>
+  <h3>Python</h3>
+  <p><code>python3.13 -m venv .venv && source .venv/bin/activate && pip install tenseal sgp4 numpy</code>,
+  then run any staged script under <code>scripts/</code> directly, or the benchmark itself with
+  <code>python3 benchmarks/python_benchmark.py</code>.</p>
+  <h3>Java</h3>
+  <p>Requires building Microsoft SEAL's C shim first (see <code>java-stack/README.md</code> for the CMake
+  steps), then <code>./gradlew build</code> from <code>java-stack/</code>. The benchmark needs a JDK new
+  enough to match the one Gradle compiled with — mismatched major versions across the JNA boundary
+  produce a <code>UnsupportedClassVersionError</code>, not a helpful message, so check
+  <code>java -version</code> against Gradle's toolchain first. Run it directly with
+  <code>java -cp build/classes/java/main:&lt;jna-jar&gt; -Djna.library.path=&lt;path-to-built-libsealc&gt;
+  sgp4fhe.Benchmark</code> rather than <code>gradle run</code> — Gradle's daemon process model hides
+  native (off-heap) memory from the host OS's own accounting, which matters for the memory numbers in
+  this report.</p>
+</section>
+
 <section id="methodology">
-  <div class="section-eyebrow">Methodology</div>
+  <div class="section-eyebrow">Experimental design</div>
   <h2>What was actually measured</h2>
   <p>Both stacks run the identical CKKS context: <code>poly_modulus_degree = 32768</code>, coefficient
   modulus <code>[60, 40×16, 60]</code> bits (18 primes, 16 usable sequential multiplications), initial
@@ -342,10 +492,10 @@ a:hover{ border-bottom-color:var(--accent); }
   Vertical scaling (bigger boxes) and horizontal scaling (more boxes) are equally valid here since there's
   no shared state to fight over — pick whichever is cheaper on the target cloud, not which "handles load
   better," because both scale identically: linearly, per core, with no discount for scale.</p>
-  <p>A collision‑avoidance service that evaluates orbital state on every customer poll or every conjunction
-  check would need to budget roughly one CPU‑second per evaluation at this depth, and that budget grows
-  with polynomial degree and multiplicative depth, not with request complexity in the way a normal API
-  would. Sizing for this means sizing for the number of concurrent evaluations, full stop.</p>
+  <p>A service that evaluates orbital state on every poll or every conjunction check would need to budget
+  roughly one CPU‑second per evaluation at this depth, and that budget grows with polynomial degree and
+  multiplicative depth, not with request complexity in the way a normal API would. Sizing for this means
+  sizing for the number of concurrent evaluations, full stop.</p>
 </section>
 
 <section id="findings">
@@ -358,7 +508,7 @@ a:hover{ border-bottom-color:var(--accent); }
       <div class="finding bad"><b>Depth is a hard, pre‑committed budget, not a tuning knob.</b> This context supports exactly 16 sequential multiplications and fails on the 17th, deterministically, in both languages. Widening the eccentricity range in the prototype (stage 6) needed depth ~20+ and simply couldn't run on this context at all — the fix costs a bigger modulus chain, which costs more of everything else in this report.</div>
       <div class="finding bad"><b>Per‑core throughput is low.</b> Well under one full evaluation per second per core for the bivariate case. Scaling to real traffic means real hardware spend, linearly, with no batching discount available.</div>
       <div class="finding bad"><b>The Java bridge leaks native memory unless you manage it by hand.</b> SEAL's C API has no GC across the JNA boundary — this benchmark run itself crashed with an OOM kill before the fix went in. Any production Java integration on this bridge needs the same discipline this report needed just to finish running.</div>
-      <div class="finding bad"><b>Only orbital phase stays private, not orbit shape.</b> The eccentricity/shape parameters have to be public to build the offline polynomial fit. If a customer's orbit shape itself is the sensitive part, this design doesn't cover that case.</div>
+      <div class="finding bad"><b>This protects orbital phase, not orbit identity — and that's a narrower privacy property than it sounds.</b> Orbit shape has to be public to build the offline polynomial fit. For an already-cataloged object that's not a new leak, but for an uncataloged object, or for hiding which object a customer is even asking about, this design exposes exactly the fact that needed protecting. See <a href="#privacy">Privacy model</a> for the full reasoning — this isn't a minor caveat.</div>
     </div>
     <div class="findings-col">
       <h3><span class="dot good"></span>What holds up</h3>

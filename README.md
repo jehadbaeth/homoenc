@@ -1,6 +1,6 @@
 # homoenc
 
-**Full study: [FHE Feasibility Study — CKKS Performance for Orbit Propagation](https://jehadbaeth.github.io/homoenc/)**
+**Full study: [FHE Feasibility Study — CKKS Performance and Privacy for Orbit Propagation](https://jehadbaeth.github.io/homoenc/)**
 
 Hands-on exploration of fully homomorphic encryption (FHE), prompted by Google's
 HEIR announcement, aimed at a concrete question: could OKAPI:Orbits host its
