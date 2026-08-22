@@ -129,13 +129,30 @@ footer{ margin-top:64px; padding-top:20px; border-top:1px solid var(--rule); fon
 code{ font-family:var(--mono); font-size:12px; background:var(--surface-alt); padding:1px 5px; border-radius:3px; }
 a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--accent-soft); }
 a:hover{ border-bottom-color:var(--accent); }
+
+abbr.acr{ text-decoration:none; border-bottom:1px dotted var(--accent); cursor:help; color:inherit; }
+a.acr{ text-decoration:none; border-bottom:1px dotted var(--accent); cursor:help; }
+a.acr:hover{ border-bottom-style:solid; }
+span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); cursor:help; }
+
+.glossary-list{ display:grid; grid-template-columns:1fr; gap:2px; margin:16px 0 20px; }
+.glossary-item{
+  display:grid; grid-template-columns:120px 1fr; gap:14px; padding:10px 0; border-bottom:1px solid var(--rule);
+  font-size:13.5px; align-items:baseline;
+}
+.glossary-item dt{ font-family:var(--mono); font-weight:700; color:var(--accent-ink); }
+.glossary-item dd{ margin:0; color:var(--ink-soft); }
+.glossary-item dd a{ color:var(--ink-soft); border-bottom-color:var(--rule); }
+
+.source-list{ font-size:13px; margin:12px 0 0; padding-left:20px; }
+.source-list li{ margin-bottom:5px; }
 </style>
 
 <div class="masthead">
   <div class="masthead-inner">
     <div class="eyebrow">Feasibility study · FHE / CKKS prototype</div>
     <h1>Can CKKS carry real orbit-propagation traffic — and does it actually keep anything private?</h1>
-    <p class="subtitle">A from-scratch, two-language (Python + Java) implementation of an SGP4-shaped
+    <p class="subtitle">A from-scratch, two-language (Python + Java) implementation of an <a class="acr" href="https://en.wikipedia.org/wiki/Simplified_perturbations_models" title="Simplified General Perturbations 4: the standard model for propagating satellite orbits from tracking data.">SGP4</a>-shaped
     orbit-propagation workload under fully homomorphic encryption, benchmarked for latency, memory, and
     bandwidth, and checked honestly against what it actually promises to keep confidential.</p>
     <div class="meta-row">
@@ -151,14 +168,14 @@ a:hover{ border-bottom-color:var(--accent); }
 <section style="margin-top:40px;">
   <div class="section-eyebrow">Abstract</div>
   <p class="wide" style="max-width:70ch; font-size:15px;">
-  Fully homomorphic encryption (FHE) is the one class of technique that lets a server compute on data it
+  Fully homomorphic encryption (<a class="acr" href="https://en.wikipedia.org/wiki/Homomorphic_encryption" title="Fully Homomorphic Encryption: computing directly on encrypted data, producing an encrypted result, without ever decrypting it.">FHE</a>) is the one class of technique that lets a server compute on data it
   never gets to see in the clear. That's an attractive property for any service that processes sensitive
   numerical data on someone else's behalf — orbital tracking data is one example, medical sensor data or
   financial positions would be others. This study picks a concrete, non-trivial workload — an
   SGP4-shaped orbit-propagation computation, chosen because it involves an iterative solve that FHE
   cannot do directly — and asks two separate questions about it: what does it cost, and what does it
   actually keep confidential? We built the same staged prototype twice, once in Python against TenSEAL
-  and once in Java against Microsoft SEAL directly, and benchmarked both under an identical CKKS context
+  and once in Java against <a class="acr" href="https://github.com/microsoft/SEAL" title="Microsoft SEAL: Microsoft's open-source C++ library implementing homomorphic encryption, including CKKS.">Microsoft SEAL</a> directly, and benchmarked both under an identical CKKS context
   on the same machine. On cost: correctness holds up to sub-meter accuracy and the workload's
   statelessness makes scaling arithmetic trivial, but compute is roughly five orders of magnitude above
   the plaintext equivalent, and multiplicative depth is a fixed, pre-committed budget rather than a knob
@@ -180,7 +197,8 @@ a:hover{ border-bottom-color:var(--accent); }
   <a href="#memory">Memory</a> ·
   <a href="#bandwidth">Bandwidth</a> ·
   <a href="#viability">Production viability</a> ·
-  <a href="#findings">Findings</a>
+  <a href="#findings">Findings</a> ·
+  <a href="#glossary">Glossary</a>
   </p>
 </section>
 
@@ -203,7 +221,7 @@ a:hover{ border-bottom-color:var(--accent); }
   Fully homomorphic encryption removes that requirement: it lets specific arithmetic operations
   (addition, multiplication) run directly on ciphertexts, producing an encrypted result that decrypts to
   the same answer as if the operation had run on the plaintext.</p>
-  <p><b>CKKS</b> is the FHE scheme used throughout this study. It's built for approximate arithmetic over
+  <p><b><a class="acr" href="https://en.wikipedia.org/wiki/Homomorphic_encryption#Fourth_generation" title="Cheon-Kim-Kim-Song: the FHE scheme used throughout this study, built for approximate real-number arithmetic rather than exact integers.">CKKS</a></b> is the FHE scheme used throughout this study. It's built for approximate arithmetic over
   real numbers rather than exact integers, which makes it a natural fit for physical/engineering
   computations that already tolerate floating-point error. Its two hard constraints shape everything
   else in this report:</p>
@@ -218,8 +236,8 @@ a:hover{ border-bottom-color:var(--accent); }
   project, not a footnote.</p>
   <p>We picked orbit propagation as the test workload specifically because it is <i>not</i> a toy
   "add two encrypted numbers" demo. SGP4-style propagation includes solving Kepler's equation
-  (<code>M = E − e·sin(E)</code>) for the eccentric anomaly <code>E</code>, which is normally done with
-  Newton–Raphson iteration — a loop that repeatedly divides by an encrypted quantity and decides when to
+  (<code>M = E − e·sin(E)</code>) for the <span class="note" title="Eccentric anomaly: an angle describing where an object is along its elliptical orbit, geometrically related to (but not equal to) its true position angle.">eccentric anomaly</span> <code>E</code>, which is normally done with
+  <span class="note" title="Newton–Raphson: an iterative method for finding a function's root by repeatedly refining a guess using the function's slope — requires division at every step.">Newton–Raphson iteration</span> — a loop that repeatedly divides by an encrypted quantity and decides when to
   stop based on comparing an encrypted error to a threshold. Neither operation exists under CKKS. Forcing
   a real iterative numerical method through FHE's constraints, rather than picking a workload that avoids
   the problem, is what makes the findings below meaningful.</p>
@@ -243,11 +261,12 @@ a:hover{ border-bottom-color:var(--accent); }
   entire point of encrypting the input.</p>
   <p><b>Stage 3 — the actual fix: closed-form polynomial evaluation.</b> Instead of solving Kepler's
   equation homomorphically, fit its solution as a polynomial <i>offline</i>, in plaintext, for a known,
-  fixed orbit shape (semi-major axis <code>a</code>, eccentricity <code>e</code>) — sampling the true
-  solution at many values of mean anomaly <code>M</code> and fitting a degree-14 polynomial in
-  <code>M</code> with ordinary least squares. At runtime, only <code>M</code> is encrypted; the server
+  fixed orbit shape (<span class="note" title="Semi-major axis: half the longest diameter of an elliptical orbit — sets its overall size.">semi-major axis</span> <code>a</code>, <span class="note" title="Eccentricity: a number from 0 (circular) to just under 1 (highly elongated) describing how stretched an elliptical orbit is.">eccentricity</span> <code>e</code>) — sampling the true
+  solution at many values of <span class="note" title="Mean anomaly: an angle that increases at a constant rate over one orbit, used as a simple stand-in for &quot;where in time&quot; the object is along its orbit.">mean anomaly</span> <code>M</code> and fitting a degree-14 polynomial in
+  <code>M</code> with <span class="note" title="Ordinary least squares: a standard curve-fitting method that picks the polynomial coefficients minimizing total squared error against the sampled data.">ordinary least squares</span>. At runtime, only <code>M</code> is encrypted; the server
   evaluates the pre-fit polynomial homomorphically using nothing but ciphertext add, multiply, and
-  plaintext-multiply — all operations CKKS actually supports — via Horner's method. This is the core
+  plaintext-multiply — all operations CKKS actually supports — via
+  <span class="note" title="Horner's method: a way of evaluating a polynomial with the fewest possible multiplications, by nesting it as ((...(a_n·x + a_(n-1))·x + ...)·x + a_0).">Horner's method</span>. This is the core
   trick this whole study is built around, and it's also the source of the confidentiality limitation
   discussed below.</p>
   <p><b>Stage 4+ — extending to a second hidden variable.</b> The same idea, extended to also keep
@@ -258,7 +277,7 @@ a:hover{ border-bottom-color:var(--accent); }
   budget can supply — it fails deterministically, in both languages, exactly as depth theory predicts.</p>
   <p>The whole thing was built <b>twice, independently</b>: once in Python against
   <a href="https://github.com/OpenMined/TenSEAL">TenSEAL</a> (a high-level Python wrapper over Microsoft
-  SEAL), and once in Java, hand-written against SEAL's C ABI (<code>sealc</code>) via a JNA binding,
+  SEAL), and once in Java, hand-written against SEAL's C <a class="acr" href="https://en.wikipedia.org/wiki/Application_binary_interface" title="Application Binary Interface: the low-level calling convention a compiled library exposes, used here to call SEAL (a C++ library) directly from Java.">ABI</a> (<code>sealc</code>) via a <a class="acr" href="https://en.wikipedia.org/wiki/Java_Native_Access" title="Java Native Access: a library that lets Java code call native (non-Java) shared libraries without writing JNI glue code.">JNA</a> binding,
   because no mature native Java FHE library exists. Building it twice wasn't redundant busywork — it's
   what let us tell, later, whether a given finding was a property of CKKS itself or an artifact of one
   particular binding (see the Latency section: some findings turned out to be algorithmic, not
@@ -279,7 +298,7 @@ a:hover{ border-bottom-color:var(--accent); }
   <p>Does that matter in practice? It depends entirely on what's actually sensitive, and the honest answer
   splits into two very different cases:</p>
   <p><b>For an object that's already in a public catalog</b> (tracked and published via Space-Track or
-  CelesTrak TLEs, which cover essentially everything trackable from the ground), semi-major axis and
+  CelesTrak <a class="acr" href="https://en.wikipedia.org/wiki/Two-line_element_set" title="Two-Line Element set: the standard public format for publishing an object's orbital elements, derived from ground-based tracking.">TLEs</a>, which cover essentially everything trackable from the ground), semi-major axis and
   eccentricity are already public information. Handing them to the evaluating server in the clear doesn't
   leak anything about that object's orbit that a public catalog lookup wouldn't already reveal. In this
   case the design's actual, real confidentiality contribution is protecting the object's <i>current
@@ -300,6 +319,43 @@ a:hover{ border-bottom-color:var(--accent); }
   In that case the server sees a more refined orbital solution than is publicly available — itself a
   potentially valuable, proprietary piece of information (e.g., revealing precise station-keeping
   behavior), not something that was already public.</p>
+  <h3>How big is the "undisclosed object" case, actually?</h3>
+  <p>It would be easy to wave the first bullet above away as an edge case — a handful of spy satellites,
+  irrelevant to most real traffic. The numbers say the opposite: uncataloged objects are the overwhelming
+  majority of everything in orbit, not a rare exception.</p>
+  <p>Of everything actually in orbit, only around <b>40,000–50,000 objects</b> are in the public catalog
+  (tracked by the US Space Surveillance Network and published via
+  <span class="note" title="Space-Track.org and CelesTrak both publish the US military's catalog of tracked orbital objects as TLEs, freely and publicly.">Space-Track / CelesTrak</span>).
+  Statistical models from <abbr class="acr" title="European Space Agency">ESA</abbr> and
+  <abbr class="acr" title="National Aeronautics and Space Administration">NASA</abbr> estimate roughly
+  <b>1.2 million</b> untracked fragments between 1–10 cm, and <b>over 140 million</b> fragments smaller
+  than 1 cm — none of them cataloged, individually identifiable, or trackable by anyone. Cataloged
+  objects are well under 1% of everything up there by count.</p>
+  <p>On top of that debris population sits a separate, much smaller category: objects that function
+  normally and are cataloged as existing, but whose mission (and sometimes precise orbital elements) is
+  deliberately classified. TLEs carry a classification flag — <code>U</code> for unclassified,
+  <code>S</code> for secret — and <code>S</code>-flagged objects don't appear in the public feed at all.
+  As one concrete, countable example: the <abbr class="acr" title="National Reconnaissance Office — the US agency that builds and operates America's spy satellites">NRO</abbr>
+  alone had roughly 486 cataloged objects in orbit as of mid-2026, about 307 of them active — and that's
+  just the cataloged fraction of one nation's reconnaissance fleet; several other nations run comparable
+  programs, and independent trackers periodically surface individual objects that were never officially
+  acknowledged (the ~170 Starshield satellites identified via radio signal in 2025 being one recent
+  example).</p>
+  <p>So "the object is undisclosed" isn't a corner case that only applies to intelligence agencies — it's
+  the default state of almost everything in orbit, once you count debris. Combined with the
+  query-to-object linkage and precision points above, the privacy limitation described here applies to
+  most of the space environment, not a small slice of it.</p>
+  <p><b>Sources for the figures in this subsection:</b></p>
+  <ul class="source-list">
+    <li><a href="https://orbitalradar.com/space-debris-statistics">Space Debris Statistics 2026: How Many Objects in Orbit? — Orbital Radar</a></li>
+    <li><a href="https://sdup.esoc.esa.int/discosweb/statistics/">Space Environment Statistics — ESA Space Debris User Portal (DISCOSweb)</a></li>
+    <li><a href="https://www.unoosa.org/oosa/en/informationfor/media/unoosa-and-esa-release-infographics-and-podcasts-about-space-debris.html">UNOOSA and ESA release updated infographics about space debris</a></li>
+    <li><a href="https://keeptrack.space/deep-dive/two-line-element-set">TLE Format Explained Field by Field — KeepTrack</a></li>
+    <li><a href="https://keeptrack.space/satellites/owners/nro">National Reconnaissance Office Satellites and Statistics — KeepTrack</a></li>
+    <li><a href="https://planet4589.org/space/papers/space25.pdf">Space Activities in 2025 — Jonathan McDowell</a></li>
+    <li><a href="https://www.supercluster.com/editorial/meet-the-amateur-astronomers-hunting-for-spy-satellites">The Amateur Astronomers Who Hunt Spy Satellites — Supercluster</a></li>
+    <li><a href="https://www.space.com/amateur-satellite-trackers-on-global-lookout.html">How amateur satellite trackers are keeping an "eye" on objects around the Earth — Space.com</a></li>
+  </ul>
   <p>The conclusion we draw from this, stated as plainly as we can: <b>this technique protects orbital
   phase, not orbit identity</b>, and it should not be described or sold as "orbital data stays encrypted
   end to end" without that caveat attached. It's a legitimate, useful privacy property in the narrow case
@@ -325,7 +381,8 @@ a:hover{ border-bottom-color:var(--accent); }
   <code>python3 benchmarks/python_benchmark.py</code>.</p>
   <h3>Java</h3>
   <p>Requires building Microsoft SEAL's C shim first (see <code>java-stack/README.md</code> for the CMake
-  steps), then <code>./gradlew build</code> from <code>java-stack/</code>. The benchmark needs a JDK new
+  steps), then <code>./gradlew build</code> from <code>java-stack/</code>. The benchmark needs a
+  <a class="acr" href="https://en.wikipedia.org/wiki/Java_Development_Kit" title="Java Development Kit: the tools needed to compile and run Java code, including the compiler and the JVM.">JDK</a> new
   enough to match the one Gradle compiled with — mismatched major versions across the JNA boundary
   produce a <code>UnsupportedClassVersionError</code>, not a helpful message, so check
   <code>java -version</code> against Gradle's toolchain first. Run it directly with
@@ -342,7 +399,7 @@ a:hover{ border-bottom-color:var(--accent); }
   modulus <code>[60, 40×16, 60]</code> bits (18 primes, 16 usable sequential multiplications), initial
   scale <code>2⁴⁰</code>. Same host, same run session, back to back, so the numbers are directly
   comparable to each other — they are not a claim about FHE performance in general.</p>
-  <p>In a real deployment the context, public key, and relinearization keys are generated once and
+  <p>In a real deployment the context, public key, and <span class="note" title="Relinearization: a cleanup step run after every ciphertext-ciphertext multiply that shrinks the result back to its normal size, using a special key generated once at setup.">relinearization</span> keys are generated once and
   shared by every request; only the client ever holds the secret key. So <b>context + keygen is reported
   as a one‑time cost</b>, separate from the per‑request path that repeats:</p>
 
@@ -355,13 +412,13 @@ a:hover{ border-bottom-color:var(--accent); }
 
   <p>Java was run directly via <code>java -cp …</code> (not <code>gradle run</code>, whose daemon/child
   process model would hide native memory) wrapped in <code>/usr/bin/time -l</code>, the only way on macOS
-  to see SEAL's off‑heap native allocations — they're invisible to <code>Runtime.totalMemory()</code>.
-  Python's peak RSS comes from <code>resource.getrusage(...).ru_maxrss</code>, which reports bytes on
+  to see SEAL's <span class="note" title="Memory allocated outside the JVM's managed heap — e.g. by a native C++ library called through JNA — which the JVM's own accounting doesn't see.">off‑heap</span> native allocations — they're invisible to <code>Runtime.totalMemory()</code>.
+  Python's peak <a class="acr" href="https://en.wikipedia.org/wiki/Resident_set_size" title="Resident Set Size: the amount of physical memory a process is actually using right now, as opposed to memory it has merely reserved.">RSS</a> comes from <code>resource.getrusage(...).ru_maxrss</code>, which reports bytes on
   macOS (not KB, as on Linux — easy to get wrong by 1000×).</p>
 
   <div class="callout warn">
-    <b>A real bug this benchmark found:</b> the first version of the Java benchmark OOM‑killed itself
-    (exit 137) a third of the way through. SEAL's C API has no garbage collection across the JNA
+    <b>A real bug this benchmark found:</b> the first version of the Java benchmark <a class="acr" href="https://en.wikipedia.org/wiki/Out_of_memory" title="Out Of Memory: the operating system killed the process because it ran out of available memory.">OOM</a>‑killed itself
+    (exit 137) a third of the way through. SEAL's C API has no <a class="acr" href="https://en.wikipedia.org/wiki/Garbage_collection_(computer_science)" title="Garbage Collection: automatic reclamation of memory that's no longer reachable, so the programmer doesn't have to free it by hand.">garbage collection</a> across the JNA
     boundary — every ciphertext returned by a native call is a heap allocation the caller must free
     explicitly. The staged prototype code never freed anything, which didn't matter for a program that
     ran once and exited, but a benchmark that repeats <code>multiply()</code> and a 14‑degree Horner
@@ -423,7 +480,7 @@ a:hover{ border-bottom-color:var(--accent); }
   <p>One process, one context, the full benchmark run (context + all timed operations) end to end.</p>
   <div class="legend"><span><span class="swatch java"></span>Java</span><span><span class="swatch py"></span>Python</span></div>
   <div class="bars" id="bars-mem"></div>
-  <p>Java's 6.3 GB peak — even after fixing the leak above — reflects the JVM's own heap reservation
+  <p>Java's 6.3 GB peak — even after fixing the leak above — reflects the <a class="acr" href="https://en.wikipedia.org/wiki/Java_virtual_machine" title="Java Virtual Machine: the runtime that executes Java bytecode; it reserves its own managed heap separately from any native memory a library allocates.">JVM</a>'s own heap reservation
   stacked on top of SEAL's native pool, plus JNA's marshalling overhead on every call across the
   boundary. TenSEAL wraps the same SEAL library but manages ciphertext lifetime through Python's
   reference counting, so short‑lived intermediates get freed as soon as they go out of scope, without
@@ -437,7 +494,7 @@ a:hover{ border-bottom-color:var(--accent); }
   <h2>Ciphertext size on the wire</h2>
   <p>Relevant because this is a stateless, request/response service: every request ships an encrypted
   input in and an encrypted result back, and every multiplicative level consumed shrinks the ciphertext
-  (rescaling drops a prime from the modulus chain each time).</p>
+  (<span class="note" title="Rescaling: a step run after every ciphertext-ciphertext multiply that drops one prime from the ciphertext's modulus chain, keeping its scale under control at the cost of one unit of remaining multiplicative depth.">rescaling</span> drops a prime from the <span class="note" title="Modulus chain: the ordered list of primes a CKKS ciphertext is defined over; rescaling removes one from the end each time, which is why depth is a finite, shrinking budget.">modulus chain</span> each time).</p>
   <div class="tbl-wrap">
     <table>
       <thead><tr><th>Ciphertext</th><th>Stack</th><th>Uncompressed</th><th>zstd</th><th>Note</th></tr></thead>
@@ -451,7 +508,8 @@ a:hover{ border-bottom-color:var(--accent); }
   </div>
   <div class="callout">
     A CKKS ciphertext is, by design, computationally indistinguishable from random noise — that's the
-    security property doing its job — so general‑purpose compression finds nothing to exploit and zstd
+    security property doing its job — so general‑purpose compression finds nothing to exploit and
+    <a class="acr" href="https://en.wikipedia.org/wiki/Zstd" title="Zstandard: a general-purpose lossless compression algorithm developed at Meta, commonly used for its speed/ratio tradeoff.">zstd</a>
     reliably makes it slightly <i>larger</i> (frame overhead on incompressible data). Don't budget for
     compression helping bandwidth here.
   </div>
@@ -486,7 +544,7 @@ a:hover{ border-bottom-color:var(--accent); }
     </table>
   </div>
   <p>100 requests/second is an arbitrary yardstick, not a real target — the point is the shape of the
-  number. This is CPU‑bound, single‑core‑pinned work (SEAL doesn't multithread a single evaluation), so
+  number. This is <a class="acr" href="https://en.wikipedia.org/wiki/Central_processing_unit" title="Central Processing Unit — work that's limited by raw computation, not by network or disk waiting, so throughput scales with cores, not cleverness.">CPU</a>‑bound, single‑core‑pinned work (SEAL doesn't multithread a single evaluation), so
   the honest scaling story is <b>add cores linearly, not cleverness</b>: no amount of caching or batching
   changes that one evaluation eats most of a CPU core for the better part of a second to two seconds.
   Vertical scaling (bigger boxes) and horizontal scaling (more boxes) are equally valid here since there's
@@ -494,7 +552,7 @@ a:hover{ border-bottom-color:var(--accent); }
   better," because both scale identically: linearly, per core, with no discount for scale.</p>
   <p>A service that evaluates orbital state on every poll or every conjunction check would need to budget
   roughly one CPU‑second per evaluation at this depth, and that budget grows with polynomial degree and
-  multiplicative depth, not with request complexity in the way a normal API would. Sizing for this means
+  multiplicative depth, not with request complexity in the way a normal <a class="acr" href="https://en.wikipedia.org/wiki/API" title="Application Programming Interface: the contract a service exposes for other software to call it.">API</a> would. Sizing for this means
   sizing for the number of concurrent evaluations, full stop.</p>
 </section>
 
@@ -519,6 +577,48 @@ a:hover{ border-bottom-color:var(--accent); }
       <div class="finding good"><b>Compression doesn't need to be built.</b> Don't spend engineering time on ciphertext compression for this transport — the data proves it doesn't help, which simplifies whatever wire protocol carries these.</div>
     </div>
   </div>
+</section>
+
+<section id="glossary">
+  <div class="section-eyebrow">Glossary</div>
+  <h2>Acronyms and terms used above</h2>
+  <p>Every acronym and technical term above is underlined and shows this same explanation on hover;
+  this section collects them in one place for reference, each linked to a fuller external source.</p>
+  <h3>Acronyms</h3>
+  <dl class="glossary-list">
+    <div class="glossary-item"><dt>FHE</dt><dd>Fully Homomorphic Encryption — computing directly on encrypted data without ever decrypting it. <a href="https://en.wikipedia.org/wiki/Homomorphic_encryption">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>CKKS</dt><dd>Cheon-Kim-Kim-Song — the approximate-arithmetic FHE scheme used throughout this study. <a href="https://en.wikipedia.org/wiki/Homomorphic_encryption#Fourth_generation">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>SGP4</dt><dd>Simplified General Perturbations 4 — the standard model for propagating satellite orbits from tracking data. <a href="https://en.wikipedia.org/wiki/Simplified_perturbations_models">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>TLE</dt><dd>Two-Line Element set — the standard public format for an object's orbital elements. <a href="https://en.wikipedia.org/wiki/Two-line_element_set">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>SEAL</dt><dd>Microsoft SEAL — the open-source C++ library implementing CKKS that both stacks in this study are built on. <a href="https://github.com/microsoft/SEAL">GitHub</a></dd></div>
+    <div class="glossary-item"><dt>JNA</dt><dd>Java Native Access — lets Java call native shared libraries without writing JNI glue code; used here to call SEAL from Java. <a href="https://en.wikipedia.org/wiki/Java_Native_Access">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>ABI</dt><dd>Application Binary Interface — the low-level calling convention a compiled library exposes. <a href="https://en.wikipedia.org/wiki/Application_binary_interface">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>JVM</dt><dd>Java Virtual Machine — the runtime that executes Java bytecode and reserves its own heap, separate from native memory. <a href="https://en.wikipedia.org/wiki/Java_virtual_machine">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>JDK</dt><dd>Java Development Kit — the toolchain used to compile and run Java code. <a href="https://en.wikipedia.org/wiki/Java_Development_Kit">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>RSS</dt><dd>Resident Set Size — the physical memory a process is actually using right now. <a href="https://en.wikipedia.org/wiki/Resident_set_size">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>GC</dt><dd>Garbage Collection — automatic reclamation of memory no longer in use. <a href="https://en.wikipedia.org/wiki/Garbage_collection_(computer_science)">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>OOM</dt><dd>Out Of Memory — the operating system killed a process because it exhausted available memory. <a href="https://en.wikipedia.org/wiki/Out_of_memory">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>API</dt><dd>Application Programming Interface — the contract a service exposes to other software. <a href="https://en.wikipedia.org/wiki/API">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>CPU</dt><dd>Central Processing Unit — the resource that bounds computation-heavy, non-I/O-bound work like this one. <a href="https://en.wikipedia.org/wiki/Central_processing_unit">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>zstd</dt><dd>Zstandard — a general-purpose lossless compression algorithm, tested here against ciphertexts. <a href="https://en.wikipedia.org/wiki/Zstd">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>NRO</dt><dd>National Reconnaissance Office — the US agency operating America's reconnaissance satellites. <a href="https://en.wikipedia.org/wiki/National_Reconnaissance_Office">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>ESA</dt><dd>European Space Agency. <a href="https://en.wikipedia.org/wiki/European_Space_Agency">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>NASA</dt><dd>National Aeronautics and Space Administration. <a href="https://en.wikipedia.org/wiki/NASA">Wikipedia</a></dd></div>
+  </dl>
+  <h3>Orbital mechanics and algorithm terms</h3>
+  <dl class="glossary-list">
+    <div class="glossary-item"><dt>Semi-major axis</dt><dd>Half the longest diameter of an elliptical orbit — sets its overall size.</dd></div>
+    <div class="glossary-item"><dt>Eccentricity</dt><dd>A number from 0 (circular) to just under 1 (highly elongated) describing how stretched an orbit is.</dd></div>
+    <div class="glossary-item"><dt>Mean anomaly</dt><dd>An angle that increases at a constant rate over one orbit — a simple stand-in for "where in time" an object is.</dd></div>
+    <div class="glossary-item"><dt>Eccentric anomaly</dt><dd>An angle describing where an object is along its ellipse, geometrically related to but distinct from its true position angle.</dd></div>
+    <div class="glossary-item"><dt>Newton–Raphson</dt><dd>An iterative root-finding method that refines a guess using the function's slope; needs division at every step.</dd></div>
+    <div class="glossary-item"><dt>Horner's method</dt><dd>A way of evaluating a polynomial with the fewest possible multiplications, by nesting it.</dd></div>
+    <div class="glossary-item"><dt>Ordinary least squares</dt><dd>A curve-fitting method that picks coefficients minimizing total squared error against sampled data.</dd></div>
+    <div class="glossary-item"><dt>Modulus chain</dt><dd>The ordered list of primes a CKKS ciphertext is defined over; shrinks by one prime every time it's rescaled.</dd></div>
+    <div class="glossary-item"><dt>Relinearization</dt><dd>A cleanup step after every ciphertext-ciphertext multiply that shrinks the result back to normal size.</dd></div>
+    <div class="glossary-item"><dt>Rescaling</dt><dd>A step after every ciphertext-ciphertext multiply that keeps the scale under control, at the cost of one level of remaining depth.</dd></div>
+    <div class="glossary-item"><dt>Off-heap</dt><dd>Memory allocated outside a managed runtime's own heap — e.g. by a native library — invisible to that runtime's own memory accounting.</dd></div>
+  </dl>
 </section>
 
 <footer>
