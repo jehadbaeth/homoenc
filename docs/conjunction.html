@@ -521,7 +521,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
     var bad = css.getPropertyValue('--bad').trim();
 
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    [5, 10, 50, 100, 500, 1000, 2000].filter(function(y){ return y >= ymin && y <= ymax; }).forEach(function(y){
+    [10, 50, 100, 500, 1000, 2000].filter(function(y){ return y >= ymin && y <= ymax; }).forEach(function(y){
       var line = el('line', {x1: padL, x2: W - padR, y1: Y(y), y2: Y(y), stroke: rule, 'stroke-width': 1});
       svg.appendChild(line);
       var label = el('text', {x: padL - 6, y: Y(y) + 4, 'text-anchor': 'end', 'font-size': 10, fill: inkSoft, 'font-family': 'monospace'});
