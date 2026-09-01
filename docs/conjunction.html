@@ -1,0 +1,548 @@
+<title>Encrypted Conjunction Assessment — Closest Approach Between Two Encrypted OEMs</title>
+<style>
+:root{
+  --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
+  --rule:#c7d1cd; --accent:#2f6f7a; --accent-soft:#d9e8ea; --accent-ink:#0f3339;
+  --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
+  --mono: "SF Mono","IBM Plex Mono","JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: -apple-system, "Neue Haas Grotesk Text Pro", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d1214; --surface:#141b1e; --surface-alt:#1b2528; --ink:#e7edee; --ink-soft:#9fb0b4;
+    --rule:#2a3538; --accent:#5fb8c4; --accent-soft:#17313a; --accent-ink:#bfe9ee;
+    --good:#6fce93; --good-soft:#173226; --bad:#e5896e; --bad-soft:#33201b; --warn:#e0b15a; --warn-soft:#332612;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1214; --surface:#141b1e; --surface-alt:#1b2528; --ink:#e7edee; --ink-soft:#9fb0b4;
+  --rule:#2a3538; --accent:#5fb8c4; --accent-soft:#17313a; --accent-ink:#bfe9ee;
+  --good:#6fce93; --good-soft:#173226; --bad:#e5896e; --bad-soft:#33201b; --warn:#e0b15a; --warn-soft:#332612;
+}
+:root[data-theme="light"]{
+  --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
+  --rule:#c7d1cd; --accent:#2f6f7a; --accent-soft:#d9e8ea; --accent-ink:#0f3339;
+  --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
+}
+*{box-sizing:border-box;}
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55; -webkit-font-smoothing:antialiased; }
+::selection{ background:var(--accent-soft); }
+.wrap{ max-width:920px; margin:0 auto; padding:0 24px 96px; }
+.masthead{ background:var(--surface); border-bottom:1px solid var(--rule); padding:40px 24px 32px; }
+.masthead-inner{ max-width:920px; margin:0 auto; }
+.eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+h1{ font-size:clamp(26px,4vw,36px); font-weight:700; letter-spacing:-.01em; margin:10px 0 8px; text-wrap:balance; }
+.subtitle{ color:var(--ink-soft); font-size:15.5px; max-width:66ch; margin:0; }
+.meta-row{ display:flex; gap:20px; flex-wrap:wrap; margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+.meta-row b{ color:var(--ink); font-weight:600; }
+.panel{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); margin:28px 0 8px; }
+.tile{ background:var(--surface); padding:16px 16px 14px; }
+.tile .label{ font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); }
+.tile .value{ font-family:var(--mono); font-size:22px; font-weight:600; margin-top:6px; font-variant-numeric:tabular-nums; }
+.tile .sub{ font-size:11.5px; color:var(--ink-soft); margin-top:3px; }
+section{ margin-top:56px; }
+h2{ font-size:22px; font-weight:700; margin:0 0 6px; letter-spacing:-.005em; }
+h3{ font-size:15.5px; font-weight:700; margin:28px 0 10px; }
+.section-eyebrow{ font-family:var(--mono); font-size:14px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink); margin-bottom:6px; }
+p{ margin:0 0 14px; max-width:70ch; }
+p.wide{ max-width:none; }
+.callout{ border-left:3px solid var(--accent); background:var(--accent-soft); padding:12px 16px; border-radius:2px; margin:16px 0; font-size:14px; max-width:70ch; }
+.callout.warn{ border-color:var(--warn); background:var(--warn-soft); }
+.callout.good{ border-color:var(--good); background:var(--good-soft); }
+table{ border-collapse:collapse; width:100%; font-size:13px; }
+.tbl-wrap{ overflow-x:auto; border:1px solid var(--rule); margin:14px 0 20px; }
+th,td{ padding:9px 12px; text-align:right; border-bottom:1px solid var(--rule); white-space:nowrap; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+th{ text-align:right; background:var(--surface-alt); font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; }
+th:first-child, td:first-child{ text-align:left; font-family:var(--sans); white-space:normal; }
+tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--surface-alt); }
+.tag{ display:inline-block; font-family:var(--mono); font-size:10.5px; padding:1px 6px; border-radius:3px; letter-spacing:.03em; }
+.tag.a{ background:var(--accent-soft); color:var(--accent-ink); }
+.tag.b{ background:var(--surface-alt); color:var(--ink-soft); }
+.tag.good{ background:var(--good-soft); color:var(--good); }
+.tag.bad{ background:var(--bad-soft); color:var(--bad); }
+.bars{ margin:18px 0 24px; }
+.bar-row{ display:grid; grid-template-columns:200px 1fr 110px; align-items:center; gap:10px; margin:7px 0; font-size:12.5px; }
+.bar-row .name{ font-family:var(--mono); color:var(--ink-soft); }
+.bar-track{ background:var(--surface-alt); border-radius:2px; height:14px; position:relative; overflow:hidden; }
+.bar-fill{ height:100%; border-radius:2px; background:var(--accent); }
+.bar-row .val{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums; }
+.flow{ display:flex; align-items:stretch; gap:0; margin:20px 0; overflow-x:auto; border:1px solid var(--rule); }
+.flow-step{ flex:1; min-width:170px; padding:16px; position:relative; border-right:1px solid var(--rule); }
+.flow-step:last-child{ border-right:none; }
+.flow-step .who{ font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+.flow-step .what{ font-weight:600; margin-top:4px; font-size:14px; }
+.flow-step .cost{ font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); margin-top:6px; }
+.flow-step.once{ background:var(--surface-alt); }
+.findings{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px; }
+@media (max-width:640px){ .findings{ grid-template-columns:1fr; } }
+.findings-col h3{ margin-top:0; display:flex; align-items:center; gap:8px; }
+.dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+.dot.good{ background:var(--good); }
+.dot.bad{ background:var(--bad); }
+.finding{ padding:12px 14px; border:1px solid var(--rule); margin-bottom:10px; font-size:13.5px; }
+.finding.good{ border-left:3px solid var(--good); }
+.finding.bad{ border-left:3px solid var(--bad); }
+.finding b{ display:block; margin-bottom:3px; font-size:13.5px; }
+footer{ margin-top:64px; padding-top:20px; border-top:1px solid var(--rule); font-size:12px; color:var(--ink-soft); }
+code{ font-family:var(--mono); font-size:12px; background:var(--surface-alt); padding:1px 5px; border-radius:3px; }
+a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--accent-soft); }
+a:hover{ border-bottom-color:var(--accent); }
+abbr.acr{ text-decoration:none; border-bottom:1px dotted var(--accent); cursor:help; color:inherit; }
+a.acr{ text-decoration:none; border-bottom:1px dotted var(--accent); cursor:help; }
+a.acr:hover{ border-bottom-style:solid; }
+span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); cursor:help; }
+.glossary-list{ display:grid; grid-template-columns:1fr; gap:2px; margin:16px 0 20px; }
+.glossary-item{ display:grid; grid-template-columns:150px 1fr; gap:14px; padding:10px 0; border-bottom:1px solid var(--rule); font-size:13.5px; align-items:baseline; }
+.glossary-item dt{ font-family:var(--mono); font-weight:700; color:var(--accent-ink); }
+.glossary-item dd{ margin:0; color:var(--ink-soft); }
+.glossary-item dd a{ color:var(--ink-soft); border-bottom-color:var(--rule); }
+.source-list{ font-size:13px; margin:12px 0 0; padding-left:20px; }
+.source-list li{ margin-bottom:5px; }
+.tabbed{ margin:18px 0 24px; }
+.tab-nav{ display:flex; gap:4px; border-bottom:1px solid var(--rule); margin-bottom:16px; }
+.tab-btn{ font-family:var(--mono); font-size:11.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); background:none; border:none; padding:8px 4px; margin:0 14px -1px 0; cursor:pointer; border-bottom:2px solid transparent; }
+.tab-btn:hover{ color:var(--ink); }
+.tab-btn.active{ color:var(--accent-ink); border-bottom-color:var(--accent); }
+.tab-panel[hidden]{ display:none; }
+.curve-wrap{ border:1px solid var(--rule); background:var(--surface); padding:16px; margin:16px 0 20px; }
+.curve-wrap svg{ width:100%; height:auto; display:block; }
+.curve-legend{ display:flex; gap:18px; font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); margin-top:10px; flex-wrap:wrap; }
+.curve-legend span{ display:inline-flex; align-items:center; gap:6px; }
+.swatch{ width:14px; height:3px; display:inline-block; border-radius:1px; }
+</style>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="eyebrow">Applied case study · encrypted conjunction assessment</div>
+    <h1>Can two encrypted orbit ephemerides tell you if they're about to collide?</h1>
+    <p class="subtitle">A follow-on to our earlier CKKS/SGP4 feasibility study, this time on the question a
+    real customer would actually ask: given two Orbit Ephemeris Messages, find the closest point of
+    approach — without decrypting either trajectory. Three designs, implemented and cross-checked against
+    a plaintext reference, on real Starlink tracking data.</p>
+    <div class="meta-row">
+      <span><b>Scenario:</b> STARLINK-35712 × STARLINK-3845</span>
+      <span><b>Data:</b> live CelesTrak TLEs</span>
+      <span><b>Scheme:</b> CKKS, same context as the SGP4 study</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section style="margin-top:40px;">
+  <div class="section-eyebrow">Abstract</div>
+  <h2>What this study found, in short</h2>
+  <p class="wide" style="max-width:70ch; font-size:15px;">
+  Our earlier study asked whether CKKS could carry an orbit-propagation workload at all. This one asks the
+  more commercially relevant question: can two parties compute a <b>conjunction assessment</b> — is
+  object A about to pass close to object B, and how close — without either party's trajectory ever being
+  decrypted? We built three designs on top of local <a class="acr" title="A standard technique for estimating a value between known samples by fitting a polynomial through the nearest few points.">Lagrange interpolation</a>, whose key property is
+  that its weights depend only on the (public) sample times, not the (potentially encrypted) sample
+  values — a genuine privacy improvement over the polynomial-fit trick our SGP4 study depended on, which
+  needed orbit shape to be public. <b>Approach B</b> (decrypt the full distance-vs-time curve) matches a
+  plaintext reference to within ~2 cm at the conjunction itself and ~7 m at worst, at the ephemeris
+  window's edges (3.2×10⁻⁶ relative to the 2,212 km separation there) — three orders of magnitude
+  smaller than anything that would change an operational decision. <b>Approach C</b> (decrypt only a below-threshold flag per
+  time, CDM-style) matches the plaintext threshold decision on all 61 tested points. <b>Approach A</b>
+  (never decrypt anything but the final minimum) works for a single pairwise comparison but hits a real,
+  reproducible CKKS depth wall the moment the reduction tree grows past one level — confirmed empirically,
+  not assumed. Getting there also surfaced an important operational lesson: a badly scaled comparator
+  polynomial produces silently wrong answers that look like they could be right, which is a more dangerous
+  failure mode than an exception. All three approaches, the plaintext cross-check, and the real orbital
+  data used are in this repository.
+  </p>
+  <p class="wide" style="max-width:70ch; font-size:13px; color:var(--ink-soft);">
+  <b>Contents</b> ·
+  <a href="#background">Background</a> ·
+  <a href="#scenario">The scenario</a> ·
+  <a href="#what-was-built">What was built</a> ·
+  <a href="#privacy">Privacy model</a> ·
+  <a href="#correctness">Correctness</a> ·
+  <a href="#reproduce">How to reproduce</a> ·
+  <a href="#latency">Latency</a> ·
+  <a href="#findings">Findings</a> ·
+  <a href="#glossary">Glossary</a>
+  </p>
+</section>
+
+<div class="panel">
+  <div class="tile"><div class="label">Miss distance found</div><div class="value">5.432 km</div><div class="sub">real Starlink pair, real TLEs</div></div>
+  <div class="tile"><div class="label">Approach B error</div><div class="value">≤7.1 m</div><div class="sub">vs. plaintext, worst of 61 points (3.2×10⁻⁶ relative)</div></div>
+  <div class="tile"><div class="label">Approach C agreement</div><div class="value">61 / 61</div><div class="sub">threshold decisions vs. plaintext</div></div>
+  <div class="tile"><div class="label">Approach A depth wall</div><div class="value">1 level</div><div class="sub">2nd reduction level throws, confirmed</div></div>
+  <div class="tile"><div class="label">Per-point eval cost</div><div class="value">~7.5–9.6 s</div><div class="sub">one grid point, this context</div></div>
+  <div class="tile"><div class="label">Peak RSS</div><div class="value">9.65 GB</div><div class="sub">3 sequential contexts, one process</div></div>
+</div>
+
+<section id="background">
+  <div class="section-eyebrow">Background</div>
+  <h2>Conjunction assessment, and why it's a better test than propagation alone</h2>
+  <p>A <b><a class="acr" title="Orbit Ephemeris Message: the CCSDS-standard table of time-stamped position/velocity samples used to describe where a satellite has been and will be.">Orbit Ephemeris Message (OEM)</a></b> is the standard format operators exchange to describe a
+  satellite's trajectory: a table of timestamps, each with a position and velocity vector. When two
+  operators' objects are predicted to pass near each other, one of them (or a third-party service) issues
+  a <b><a class="acr" title="Conjunction Data Message: the standard report describing a predicted close approach between two objects, including time and miss distance.">Conjunction Data Message (CDM)</a></b> — the time and distance of closest approach, and the
+  probability of collision. This is one of the most routine, safety-critical computations in satellite
+  operations today, and it is also exactly the kind of computation an operator might not want to hand over
+  in the clear: your ephemeris reveals where your satellite is and, over a few samples, how it maneuvers.</p>
+  <p>Our earlier study picked SGP4 propagation as a workload because it forced a real iterative numerical
+  method (Newton–Raphson for Kepler's equation) through CKKS's constraints. This study picks conjunction
+  assessment for a different, complementary reason: it is the actual product question a customer is
+  likely to ask, and — unlike propagation — it inherently involves <i>two</i> parties' data and a
+  comparison ("which one is smaller," "is this below a threshold") rather than only arithmetic. Comparison
+  and argmin are exactly the operations CKKS cannot express directly, so this workload has its own,
+  different wall to work around, distinct from division.</p>
+</section>
+
+<section id="scenario">
+  <div class="section-eyebrow">The scenario</div>
+  <h2>Real satellites, real TLEs, a real close approach</h2>
+  <p>To satisfy "actual real life data" rather than a synthetic geometry picked to look good, we fetched
+  live <a class="acr" title="Two-Line Element set: the standard public format for an object's orbital elements, derived from ground-based tracking.">TLEs</a> for the full public Starlink constellation from CelesTrak (10,726 objects at the time of
+  the run), and used a <span class="note" title="A spatial data structure for fast nearest-neighbor lookups; used here to search ~10,726 objects' propagated positions for the closest pair at a given instant.">k-d tree</span> nearest-neighbor search over every object's propagated position at
+  a fixed epoch to find a genuinely close, currently-real pair: <b>STARLINK-35712</b> and
+  <b>STARLINK-3845</b>. A dense plaintext SGP4 sweep (coarse ±12 h at 30 s resolution, refined to ±120 s at
+  0.5 s resolution) located the true closest point of approach at <b>t = +0.5 s</b> from the ephemeris
+  window's center, with a miss distance of <b>5.4320 km</b> — confirmed as a genuine local minimum by
+  checking distances at several nearby offsets, not a boundary artifact.</p>
+  <p>Two OEM tables were built from this: 59 samples each at 60 s cadence, spanning ±1740 s around the
+  conjunction, columns <code>t, x, y, z, vx, vy, vz</code> in km and km/s — the same shape a real OEM file
+  has. These two tables, <code>oem_a.csv</code> and <code>oem_b.csv</code>, are the only input every stage
+  below operates on.</p>
+</section>
+
+<section id="what-was-built">
+  <div class="section-eyebrow">What was built</div>
+  <h2>One interpolation trick, three disclosure policies</h2>
+  <p>Every approach needs the same building block: given the ~59 discrete OEM samples, estimate position at
+  an arbitrary query time <code>t</code> that falls between samples. We use <b>local Lagrange
+  interpolation</b> (order 7, an 8-point window around the query time) — the standard technique for OEM
+  interpolation. Its critical property for this study: <b>the interpolation weights are a function only of
+  the sample times</b>, which are public metadata, never of the sample values (positions), which are what
+  we want to keep encrypted. That means homomorphic interpolation is just <code>ciphertext.dot(weights)</code>
+  — a plaintext-weighted sum, costing zero multiplicative depth against other ciphertexts. This is a real
+  privacy improvement over the SGP4 study's core trick, which required the *orbit shape* to be public in
+  order to build its polynomial fit; here, nothing about the trajectory's shape needs to leave the client.</p>
+  <p>From that shared primitive, squared distance between the two interpolated positions at any query time
+  <code>t</code> is <code>dx² + dy² + dz²</code> — three ciphertext subtractions and three
+  ciphertext-ciphertext multiplications, one multiplicative level. The three approaches differ only in
+  what they do with that <code>distance_sq(t)</code> value and how many of them get computed:</p>
+
+  <h3>Approach B — bounded disclosure of the full distance curve</h3>
+  <p>Compute <code>distance_sq(t)</code> homomorphically at a public grid of candidate times (here: 61
+  points, every 10 s across ±300 s), and decrypt every one of them. The client learns the full
+  distance-vs-time curve and can find the minimum itself in plaintext. Cheapest to build, cheapest to run
+  per point, but discloses the most: the complete shape of the encounter, not just whether it's close.</p>
+
+  <h3>Approach C — thresholded flag disclosure</h3>
+  <p>Same per-point computation, but instead of decrypting <code>distance_sq(t)</code> directly, compute
+  <code>(distance_sq(t) − threshold²)</code>, scale it into a fitted comparator polynomial's valid domain,
+  and decrypt only the resulting ≈±1 <i>flag</i>. The client learns "was this time-point below the safety
+  threshold," which is the actual CDM-style question ("is there a close approach, and roughly when") —
+  never the miss distance or the trajectory shape behind it.</p>
+
+  <h3>Approach A — full homomorphic argmin, nothing decrypted but the final minimum</h3>
+  <p>The strongest disclosure policy: reduce all <code>K</code> candidate <code>distance_sq(t)</code>
+  values to a single encrypted minimum via a <code>log₂(K)</code>-deep binary reduction tree of pairwise
+  homomorphic <code>min</code> operations, and decrypt only that one final value. Homomorphic
+  <code>min(a,b)</code> is built the standard CKKS way: <code>(a+b)/2 − |a−b|/2</code>, where
+  <code>|x|</code> is approximated as <code>x · sign_approx(x)</code> using an offline-fitted polynomial
+  (below). This is the approach that actually exercises this study's depth budget, and its real behavior —
+  not the idealized version — is reported honestly in <a href="#correctness">Correctness</a> and
+  <a href="#findings">Findings</a>.</p>
+
+  <h3>The comparator polynomial</h3>
+  <p>Approaches A and C both need an approximate <code>sign(x)</code> under CKKS. We use the standard
+  Cheon et al. composition <code>g(x) = (3x − x³)/2</code>, applied 3 times, which sharpens toward a step
+  function on <code>[-1, 1]</code>. Composing 3 times gives a degree-3³=27 polynomial; instead of paying 3
+  sequential ciphertext operations, we fit that whole composition as a single degree-27 polynomial offline
+  (max fit error 6.6×10⁻¹⁴ against the raw composition) and evaluate it in one <code>polyval</code> Horner
+  pass. This polynomial is only valid — and only sign-preserving — for inputs actually inside
+  <code>[-1, 1]</code>; anything scaled outside that range does not fail cleanly (see
+  <a href="#findings">Findings</a>).</p>
+</section>
+
+<section id="privacy">
+  <div class="section-eyebrow">Privacy model</div>
+  <h2>What each approach actually discloses</h2>
+  <p>Unlike the SGP4 study, where the privacy limitation was a fixed property of the one design built,
+  these three approaches are genuinely different points on a disclosure spectrum, and picking between them
+  is a real design decision a customer would need to make:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Approach</th><th style="text-align:left;">What gets decrypted</th><th style="text-align:left;">What it reveals</th><th style="text-align:left;">Cost</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag b">B</span> Full curve</td><td style="text-align:left; font-family:var(--sans);">distance_sq(t) at every grid point</td><td style="text-align:left; font-family:var(--sans);">Complete encounter geometry — shape, closing speed, exact miss distance</td><td style="text-align:left; font-family:var(--sans);">Lowest per-point cost</td></tr>
+        <tr><td><span class="tag a">C</span> Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
+        <tr><td><span class="tag good">A</span> Full argmin</td><td style="text-align:left; font-family:var(--sans);">One final minimum value</td><td style="text-align:left; font-family:var(--sans);">Only the single closest distance found — nothing about other candidate times</td><td style="text-align:left; font-family:var(--sans);">log₂(K) reduction levels — hits a real depth wall at K=4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>None of these three requires either party's orbit <i>shape</i> to become public — the improvement over
+  the SGP4 study's design holds across all three. The tradeoff that remains is purely about <i>how much of
+  the distance signal</i> the evaluating party gets to see, and it scales inversely with cost: the design
+  that discloses the least (A) is also the one that runs into CKKS's hard depth limit first.</p>
+</section>
+
+<section id="correctness">
+  <div class="section-eyebrow">Correctness</div>
+  <h2>Cross-matched against a plaintext reference</h2>
+  <p>Every approach's encrypted output was diffed against <code>01_plaintext_reference.py</code> — the
+  identical Lagrange interpolation and squared-distance computation, run entirely in plain floats over the
+  same 61-point grid. This is the "did we get the right answer" check, independent of anything about CKKS
+  or encryption.</p>
+
+  <div class="curve-wrap">
+    <svg viewBox="0 0 860 300" id="curve-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="curve-legend">
+      <span><span class="swatch" style="background:var(--ink-soft);"></span>plaintext reference</span>
+      <span><span class="swatch" style="background:var(--accent);"></span>Approach B (encrypted, decrypted curve)</span>
+      <span><span class="swatch" style="background:var(--bad); height:1px; border-top:1px dashed var(--bad);"></span>10 km threshold</span>
+    </div>
+  </div>
+  <p style="font-size:12.5px; color:var(--ink-soft);">Plotted as distance in km on a <b>log scale</b> y-axis,
+  since distance² spans from ~30 km² at the conjunction to ~4.89 million km² at the window's edges — a
+  linear axis would crush the entire conjunction, and the 10 km threshold line with it, into a couple of
+  pixels. The two traces overlap almost exactly at this scale — that is the point. The encrypted curve
+  tracks the plaintext one to within measurement noise across the full ±300 s window, including at the
+  sharp minimum near t=0, where it dips visibly below the dashed 10 km threshold.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left; font-family:var(--sans);">Plaintext CPA (61-point grid, 10 s step)</td><td>t = 0.0 s, 29.5069 km² (5.4320 km)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B, same grid point</td><td>29.5071 km² (5.4320 km)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B max |distance² error|, all 61 points</td><td>31.51 km² (at t=−300 s, where distance² ≈ 4.89×10⁶ km²)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B max |distance error|, all 61 points</td><td>7.1×10⁻³ km (7.1 m)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach C threshold decisions vs. plaintext</td><td>61 / 61 agree</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=2 (one reduction level)</td><td>4,890,373.32 km² vs. true 4,886,431.82 km² — 0.081% error (candidates at t=−300 s / +300 s, the window's far edges, not near the CPA)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=4 (two reduction levels)</td><td>throws <code>scale out of bounds</code> partway through level 2 — see below</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The residual 7.1 m worst-case error in Approach B (3.2×10⁻⁶ relative to the ~2,212 km separation at
+  that point) is CKKS's expected approximate-arithmetic noise, not a bug — it is consistent with the noise
+  floor observed in the SGP4 study, and it's three orders of magnitude smaller than the 10 km threshold
+  that would change any operational decision at these distances. At the conjunction itself, where the
+  distances are much smaller, the error shrinks to about 2 cm.</p>
+</section>
+
+<section id="reproduce">
+  <div class="section-eyebrow">How to reproduce this</div>
+  <h2>Running the pipeline</h2>
+  <p>Everything lives under <code>oem-conjunction/</code> in this repository. Run every stage with
+  <code>PYTHONPATH=oem-conjunction</code> set, from the repo root (the scripts import shared modules by
+  bare name):</p>
+  <p><code>data/find_cpa_and_build_oems.py</code> — fetches nothing (TLEs are hardcoded from a prior
+  CelesTrak fetch) and writes <code>data/oem_a.csv</code>, <code>data/oem_b.csv</code>,
+  <code>data/ground_truth.csv</code>. <code>01_plaintext_reference.py</code> — the plaintext cross-match
+  algorithm. <code>02_approach_b_distance_curve.py</code>, <code>04_approach_c_thresholded_flags.py</code>,
+  <code>05_approach_a_toy_argmin.py</code> — the three encrypted approaches.
+  <code>06_cross_validate.py</code> — diffs B and C against the plaintext reference.
+  <code>03_fit_sign_polynomial.py</code> — the offline comparator-polynomial fit consumed by A and C.</p>
+  <div class="callout">
+    Each encrypted stage takes several minutes and holds a ~1.3–1.5 GB CKKS context in memory. Run them
+    one at a time — running two at once (as we did once, by mistake, while iterating) roughly doubles
+    both wall-clock time and peak memory for no benefit, and can trigger OS-level memory pressure on
+    machines without headroom to spare.
+  </div>
+</section>
+
+<section id="methodology">
+  <div class="section-eyebrow">Experimental design</div>
+  <h2>What was actually measured</h2>
+  <p>Identical CKKS context to the SGP4 study, for direct comparability: <code>poly_modulus_degree =
+  32768</code>, coefficient modulus <code>[60, 40×16, 60]</code> bits (16 usable sequential
+  multiplications), initial scale <code>2⁴⁰</code>. Two independent sources of latency data are reported
+  below and agree closely: the full end-to-end 61-point production sweeps for Approaches B and C, and a
+  dedicated micro-benchmark (<code>benchmark.py</code>, 5–10 repetitions per operation, run as a single
+  process — never alongside another heavy CKKS process, per the memory finding below) on the same machine
+  (macOS/arm64, Apple Silicon).</p>
+  <div class="flow">
+    <div class="flow-step once"><div class="who">Once, per run</div><div class="what">Context + keygen</div><div class="cost">10.2 – 13.9 s</div></div>
+    <div class="flow-step once"><div class="who">Once, per run</div><div class="what">Encrypt both OEMs</div><div class="cost">228 – 331 ms</div></div>
+    <div class="flow-step"><div class="who">Per grid point</div><div class="what">Interpolate + distance² (Approach B)</div><div class="cost">~7.65 s</div></div>
+    <div class="flow-step"><div class="who">Per grid point</div><div class="what">+ scale + sign polyval (Approach C)</div><div class="cost">~10.08 s</div></div>
+  </div>
+</section>
+
+<section id="latency">
+  <div class="section-eyebrow">Latency</div>
+  <h2>Where the time actually goes</h2>
+  <div class="bars">
+    <div class="bar-row"><span class="name">Encrypt both OEMs</span><div class="bar-track"><div class="bar-fill" style="width:1.1%;"></div></div><span class="val">109 ms</span></div>
+    <div class="bar-row"><span class="name">Interpolate, 1 point</span><div class="bar-track"><div class="bar-fill" style="width:37.6%;"></div></div><span class="val">3,604 ms</span></div>
+    <div class="bar-row"><span class="name">Approach A pairwise min</span><div class="bar-track"><div class="bar-fill" style="width:22.9%;"></div></div><span class="val">2,194 ms</span></div>
+    <div class="bar-row"><span class="name">Approach B, 1 point</span><div class="bar-track"><div class="bar-fill" style="width:77.7%;"></div></div><span class="val">7,452 ms</span></div>
+    <div class="bar-row"><span class="name">Approach C, 1 point</span><div class="bar-track"><div class="bar-fill" style="width:100%;"></div></div><span class="val">9,584 ms</span></div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Stage</th><th>Scope</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left; font-family:var(--sans);">Context + keygen</td><td>once</td><td>10,172 – 13,869 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Encrypt both OEMs (3 vectors each)</td><td>once</td><td>228 – 331 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B, full 61-point sweep</td><td>total</td><td>466,725 ms (7,651 ms/point)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach C, full 61-point sweep</td><td>total</td><td>615,046 ms (10,083 ms/point)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=2 distance eval + 1 reduction level</td><td>total</td><td>19,663 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=4 distance eval + level 1 (level 2 throws)</td><td>total</td><td>39,503 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The gap between B and C's per-point cost (~2.4 s) is the sign-polynomial evaluation — a degree-27
+  Horner pass costs real multiplicative work even though it's "just" one <code>polyval</code> call. A's
+  per-point distance evaluation is slower still than B's, likely reflecting increased memory/cache pressure
+  from the deeper live-ciphertext working set the reduction tree holds, rather than any change to the
+  per-point computation itself, which is identical to B's.</p>
+  <p>None of this is fast in absolute terms: a real-time conjunction-screening service built this way would
+  budget on the order of 8–10 CPU-seconds per candidate time-point, per object pair, at this context's
+  depth. That is the honest cost of "never decrypt the raw trajectory," consistent with the ~10⁵×
+  plaintext-vs-encrypted gap the SGP4 study found for a differently-shaped workload.</p>
+
+  <h3>Micro-benchmark, isolated per operation</h3>
+  <p>The single-process micro-benchmark isolates each primitive with warmup and 5–10 repetitions, and
+  confirms the production-run figures above rather than contradicting them:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Operation</th><th>n</th><th>mean</th><th>median</th><th>min</th><th>max</th><th>p95</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left; font-family:var(--sans);">context_setup_incl_keygen</td><td>3</td><td>15,786.8 ms</td><td>10,977.5 ms</td><td>9,461.2 ms</td><td>26,921.7 ms</td><td>26,921.7 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">encrypt_oem_3vectors</td><td>10</td><td>109.3 ms</td><td>109.4 ms</td><td>108.3 ms</td><td>110.6 ms</td><td>110.6 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">encrypted_interpolate_one_point</td><td>5</td><td>3,603.7 ms</td><td>3,603.4 ms</td><td>3,592.9 ms</td><td>3,624.5 ms</td><td>3,624.5 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">encrypted_distance_sq_one_point</td><td>5</td><td>7,446.9 ms</td><td>7,434.1 ms</td><td>7,426.2 ms</td><td>7,471.2 ms</td><td>7,471.2 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">decrypt_distance_sq</td><td>5</td><td>18.9 ms</td><td>18.9 ms</td><td>18.7 ms</td><td>19.3 ms</td><td>19.3 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">approach_b_distance_sq_plus_decrypt</td><td>5</td><td>7,452.3 ms</td><td>7,454.1 ms</td><td>7,447.8 ms</td><td>7,457.7 ms</td><td>7,457.7 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">approach_c_scaled_polyval_sign_plus_decrypt</td><td>5</td><td>9,584.4 ms</td><td>9,587.8 ms</td><td>9,573.2 ms</td><td>9,594.4 ms</td><td>9,594.4 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">approach_a_pairwise_homomorphic_min</td><td>10</td><td>2,194.4 ms</td><td>2,195.1 ms</td><td>2,189.9 ms</td><td>2,199.7 ms</td><td>2,199.7 ms</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">decrypt_scalar</td><td>5</td><td>6.8 ms</td><td>6.8 ms</td><td>6.7 ms</td><td>7.0 ms</td><td>7.0 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12.5px; color:var(--ink-soft);">Context setup's wide spread (9.5–26.9 s) reflects
+  three sequential context creations in one process — later ones ran slower, consistent with the memory
+  pressure noted next, not with anything about key generation itself becoming more expensive.</p>
+
+  <h3>Memory: a real, reportable cost</h3>
+  <p>Peak RSS across the micro-benchmark's single process, which builds three separate CKKS contexts
+  sequentially without disposing of the earlier ones, reached <b>9.65 GB</b>. A single fresh encrypted OEM
+  vector serializes to 6.86 MB; a single <code>distance_sq</code> ciphertext to 6.06 MB. None of this is
+  exotic — it is the direct, load-bearing cost of CKKS's large polynomial ring degree
+  (<code>32768</code>) needed to support 16 levels of depth — but it means a service holding several
+  contexts or many live ciphertexts concurrently needs to actually budget for gigabytes, not megabytes,
+  per concurrent unit of work. We hit this directly during development: running two heavy CKKS processes
+  side by side while iterating on Approaches A and C exhausted available RAM on this machine and caused
+  the OS to suspend the offending process. The fix was operational, not architectural — run one heavy CKKS
+  process at a time — and every number in this report was produced that way.</p>
+</section>
+
+<section id="findings">
+  <div class="section-eyebrow">Findings</div>
+  <h2>Bad and good, without rounding up</h2>
+  <div class="findings">
+    <div class="findings-col">
+      <h3><span class="dot bad"></span>What doesn't hold up</h3>
+      <div class="finding bad"><b>Approach A hits a real depth wall at exactly the point you'd want it not to.</b> A single pairwise minimum (K=2) works and matches plaintext to 0.08%. A full 2-level reduction tree (K=4) throws <code>ValueError: scale out of bounds</code> partway through the second level. This is the genuine, reproducible ceiling of this context — not a toy limitation, since any useful screening resolution needs far more than 4 candidate points reduced to one.</div>
+      <div class="finding bad"><b>A badly scaled comparator polynomial fails silently, not loudly — and that's the more dangerous failure mode.</b> Before the scale constant was corrected (public dynamic range of distance² in this scenario spans ~30 to ~4.89 million km², and an initial guess of 2,000 was far too small), Approach C flagged 61 of 61 points as "below threshold" instead of the correct 1, and Approach A variously threw an exception or decrypted to physically nonsensical values (as large as 10⁹¹) that did <i>not</i> raise any error. A `decrypt()` call that doesn't throw is not evidence the result is right — only comparing against a plaintext ground truth caught this.</div>
+      <div class="finding bad"><b>Thresholded disclosure (C) crushes resolution near the decision boundary by design.</b> The scale needed to keep far-away points inside the comparator polynomial's valid domain (chosen from the observed ~4.89M km² max) means the flag near the actual threshold carries very low confidence: raw flag magnitude is ~0.00005–0.015 within 20 s of the true crossing, versus ~0.37–1.0 far from it. The binary decision is still correct here, but a customer who wanted the flag's <i>margin</i> would find it nearly unusable near the boundary.</div>
+      <div class="finding bad"><b>Per-point cost is steep and doesn't shrink with cleverness.</b> 7.6–10 seconds of wall-clock per grid point, per object pair, on this context. A screening service checking many object pairs at fine time resolution needs to budget CPU-seconds per candidate point, not per pair.</div>
+    </div>
+    <div class="findings-col">
+      <h3><span class="dot good"></span>What holds up</h3>
+      <div class="finding good"><b>The interpolation weights being public is a real, structural privacy improvement.</b> Unlike the SGP4 study's polynomial-fit trick, none of these three approaches ever requires either party's orbit shape to be disclosed — only sample times, which are metadata, not trajectory content.</div>
+      <div class="finding good"><b>Approaches B and C are both correct, and both practical.</b> B matches plaintext to within ~2 cm at the actual conjunction and ~7 m (3.2×10⁻⁶ relative) at the window's far edges; C's threshold decision agrees with plaintext on all 61 tested points. Neither depends on a deep reduction tree, so neither is exposed to the depth wall that breaks A.</div>
+      <div class="finding good"><b>The depth wall for A is now honestly characterized, not assumed.</b> An earlier diagnosis mistook a scaling bug for "the depth wall failing silently" — a real methodological trap. Once the scale was corrected, the true, narrower finding is: K=2 succeeds cleanly, K=4 fails loudly and reproducibly at level 2. That is a precise, falsifiable claim about this context's limits, not a vague one.</div>
+      <div class="finding good"><b>The disclosure/cost tradeoff is legible and lets a customer actually choose.</b> Full curve, thresholded flag, or full argmin map cleanly onto "how much do you trust the evaluating party," and the cost of each is now measured, not estimated — a real basis for a design conversation with a customer rather than a single fixed answer.</div>
+    </div>
+  </div>
+</section>
+
+<section id="glossary">
+  <div class="section-eyebrow">Glossary</div>
+  <h2>Terms used above</h2>
+  <dl class="glossary-list">
+    <div class="glossary-item"><dt>OEM</dt><dd>Orbit Ephemeris Message — the CCSDS-standard table of time-stamped position/velocity samples describing a satellite's trajectory. <a href="https://en.wikipedia.org/wiki/CCSDS">Wikipedia (CCSDS)</a></dd></div>
+    <div class="glossary-item"><dt>CDM</dt><dd>Conjunction Data Message — the standard report of a predicted close approach between two objects: time, miss distance, and collision probability.</dd></div>
+    <div class="glossary-item"><dt>CPA</dt><dd>Closest Point of Approach — the time and distance at which two trajectories come nearest each other.</dd></div>
+    <div class="glossary-item"><dt>TLE</dt><dd>Two-Line Element set — the standard public format for an object's orbital elements. <a href="https://en.wikipedia.org/wiki/Two-line_element_set">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>CKKS</dt><dd>Cheon-Kim-Kim-Song — the approximate-arithmetic FHE scheme used throughout this study. <a href="https://en.wikipedia.org/wiki/Homomorphic_encryption#Fourth_generation">Wikipedia</a></dd></div>
+    <div class="glossary-item"><dt>Lagrange interpolation</dt><dd>A method for estimating a value between known samples by constructing the unique polynomial passing through the nearest points.</dd></div>
+    <div class="glossary-item"><dt>Argmin</dt><dd>The input (here, a time) that minimizes a function — as opposed to the minimum value itself.</dd></div>
+    <div class="glossary-item"><dt>Horner's method</dt><dd>A way of evaluating a polynomial with the fewest possible multiplications, by nesting it.</dd></div>
+    <div class="glossary-item"><dt>k-d tree</dt><dd>A spatial data structure enabling fast nearest-neighbor search, used here to find the closest satellite pair among ~10,726 candidates.</dd></div>
+    <div class="glossary-item"><dt>Multiplicative depth</dt><dd>The fixed number of sequential ciphertext-ciphertext multiplications a CKKS context supports before it must be re-encrypted under a larger, more expensive context.</dd></div>
+  </dl>
+</section>
+
+<footer>
+  Data and code: <code>oem-conjunction/</code> in this repository — real TLEs from CelesTrak, real SGP4
+  propagation, all three encrypted approaches, the plaintext reference, and the cross-validation script
+  that diffs them. Single machine (macOS/arm64), single run per stage. Companion to the earlier
+  <a href="index.html">SGP4/CKKS feasibility study</a>, using the identical CKKS context
+  for direct comparability.
+</footer>
+</div>
+
+<script>
+(function(){
+  var plainCurve = [[-300.0, 4894279.75905837], [-290.0, 4584897.130519019], [-280.0, 4284508.136620305], [-270.0, 3993262.7945985016], [-260.0, 3711306.5540613336], [-250.0, 3438780.224457019], [-240.0, 3175819.9048608057], [-230.0, 2922556.9161134744], [-220.0, 2679117.7353460137], [-210.0, 2445623.932921193], [-200.0, 2222192.111824701], [-190.0, 2008933.8495348813], [-180.0, 1805955.642399914], [-170.0, 1613358.8525501054], [-160.0, 1431239.6573697492], [-150.0, 1259689.001557005], [-140.0, 1098792.551791713], [-130.0, 948630.6540352618], [-120.0, 809278.2934832324], [-110.0, 680805.0571905028], [-100.0, 563275.0993869094], [-90.0, 456747.10950125055], [-80.0, 361274.2829085676], [-70.0, 276904.29441551014], [-60.0, 203679.27449673944], [-50.0, 141635.7882940485], [-40.0, 90804.81738853967], [-30.0, 51211.744354846145], [-20.0, 22876.3401049481], [-10.0, 5812.754027847306], [0.0, 29.506929948020797], [10.0, 5529.486779606741], [20.0, 22309.947258069646], [30.0, 50362.509117265705], [40.0, 89673.16434407824], [50.0, 140222.28312891768], [60.0, 201984.6236352225], [70.0, 274929.3445651346], [80.0, 359020.0205150038], [90.0, 454214.66011354735], [100.0, 560465.7269334636], [110.0, 677720.1631663627], [120.0, 805919.4160493632], [130.0, 944999.4670305976], [140.0, 1094890.863658356], [150.0, 1255518.754180042], [160.0, 1426802.9248321804], [170.0, 1608657.8398040165], [180.0, 1800992.6838548896], [190.0, 2003711.4075646875], [200.0, 2216712.775193774], [210.0, 2439890.4151316513], [220.0, 2673132.8729067985], [230.0, 2916323.666732905], [240.0, 3169341.3455639444], [250.0, 3432059.5496299574], [260.0, 3704347.0734213367], [270.0, 3986067.9310954763], [280.0, 4277081.424268699], [290.0, 4577242.212162527], [300.0, 4886400.384069065]];
+  var bCurve = [[-300.0, 4894311.267842218], [-290.0, 4584926.655904192], [-280.0, 4284535.709123014], [-270.0, 3993288.495719297], [-260.0, 3711330.439625609], [-250.0, 3438802.3609474087], [-240.0, 3175840.350097905], [-230.0, 2922575.7325701863], [-220.0, 2679134.976699204], [-210.0, 2445639.6711611114], [-200.0, 2222206.410725165], [-190.0, 2008946.7827530964], [-180.0, 1805967.267896222], [-170.0, 1613369.240498444], [-160.0, 1431248.8641771036], [-150.0, 1259697.1093132359], [-140.0, 1098799.6198917371], [-130.0, 948636.7626362066], [-120.0, 809283.5037207655], [-110.0, 680809.4411202515], [-100.0, 563278.721714871], [-90.0, 456750.04901816824], [-80.0, 361276.6068605995], [-70.0, 276906.07875276566], [-60.0, 203680.58722367563], [-50.0, 141636.70082158365], [-40.0, 90805.40062951614], [-30.0, 51212.073345329816], [-20.0, 22876.486700198693], [-10.0, 5812.791554453699], [0.0, 29.507124146010256], [10.0, 5529.522130403619], [20.0, 22310.091562928385], [30.0, 50362.83376148114], [40.0, 89673.74278813894], [50.0, 140223.1849933326], [60.0, 201985.92145144692], [70.0, 274931.11279163323], [80.0, 359022.3335842714], [90.0, 454217.58543213306], [100.0, 560469.3365635895], [110.0, 677724.526380517], [120.0, 805924.5971119015], [130.0, 945005.547079257], [140.0, 1094897.9167676717], [150.0, 1255526.8418963423], [160.0, 1426812.112357181], [170.0, 1608668.195095779], [180.0, 1801004.268581464], [190.0, 2003724.3040818095], [200.0, 2216727.0507145533], [210.0, 2439906.1283866735], [220.0, 2673150.0828791205], [230.0, 2916342.4379262077], [240.0, 3169361.7338112188], [250.0, 3432081.6437430065], [260.0, 3704370.9303532685], [270.0, 3986093.6005833484], [280.0, 4277108.960273396], [290.0, 4577271.676327994], [300.0, 4886431.8225884335]];
+  var threshold2 = 100.0;
+
+  var threshold = Math.sqrt(threshold2);
+  function toDist(pts){ return pts.map(function(p){ return [p[0], Math.sqrt(p[1])]; }); }
+  var plainDist = toDist(plainCurve);
+  var bDist = toDist(bCurve);
+
+  function drawCurve(){
+    var svg = document.getElementById('curve-svg');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var W = 860, H = 300, padL = 46, padR = 12, padT = 14, padB = 28;
+    var xs = plainDist.map(function(p){ return p[0]; });
+    var allY = plainDist.map(function(p){ return p[1]; }).concat(bDist.map(function(p){ return p[1]; }));
+    var xmin = Math.min.apply(null, xs), xmax = Math.max.apply(null, xs);
+    var ymin = Math.min.apply(null, allY) * 0.85, ymax = Math.max.apply(null, allY) * 1.15;
+    var logMin = Math.log(ymin), logMax = Math.log(ymax);
+    function X(x){ return padL + (x - xmin) / (xmax - xmin) * (W - padL - padR); }
+    function Y(y){ return H - padB - (Math.log(y) - logMin) / (logMax - logMin) * (H - padT - padB); }
+    function path(pts){
+      return pts.map(function(p, i){ return (i === 0 ? 'M' : 'L') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' ');
+    }
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(tag, attrs){
+      var e = document.createElementNS(ns, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+    var css = getComputedStyle(document.documentElement);
+    var rule = css.getPropertyValue('--rule').trim();
+    var inkSoft = css.getPropertyValue('--ink-soft').trim();
+    var accent = css.getPropertyValue('--accent').trim();
+    var bad = css.getPropertyValue('--bad').trim();
+
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    [5, 10, 50, 100, 500, 1000, 2000].filter(function(y){ return y >= ymin && y <= ymax; }).forEach(function(y){
+      var line = el('line', {x1: padL, x2: W - padR, y1: Y(y), y2: Y(y), stroke: rule, 'stroke-width': 1});
+      svg.appendChild(line);
+      var label = el('text', {x: padL - 6, y: Y(y) + 4, 'text-anchor': 'end', 'font-size': 10, fill: inkSoft, 'font-family': 'monospace'});
+      label.textContent = y + ' km';
+      svg.appendChild(label);
+    });
+    [xmin, xmin / 2, 0, xmax / 2, xmax].forEach(function(x){
+      var label = el('text', {x: X(x), y: H - 8, 'text-anchor': 'middle', 'font-size': 10, fill: inkSoft, 'font-family': 'monospace'});
+      label.textContent = Math.round(x) + 's';
+      svg.appendChild(label);
+    });
+    var threshLine = el('line', {
+      x1: padL, x2: W - padR, y1: Y(threshold), y2: Y(threshold),
+      stroke: bad, 'stroke-width': 1, 'stroke-dasharray': '4,3'
+    });
+    svg.appendChild(threshLine);
+    svg.appendChild(el('path', {d: path(plainDist), fill: 'none', stroke: inkSoft, 'stroke-width': 3, opacity: 0.6}));
+    svg.appendChild(el('path', {d: path(bDist), fill: 'none', stroke: accent, 'stroke-width': 1.5}));
+  }
+  drawCurve();
+  new MutationObserver(drawCurve).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawCurve);
+})();
+</script>

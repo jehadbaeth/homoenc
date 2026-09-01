@@ -1,0 +1,3 @@
+# peak_rss_bytes=9652797440
+# fresh_oem_vector_bytes=6856862
+# distance_sq_ciphertext_bytes=6064678

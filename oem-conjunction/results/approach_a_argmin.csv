@@ -1,0 +1,3 @@
+K,levels_attempted,levels_completed,status,encrypted_min_km2,plaintext_min_km2,relative_error_pct,error_message,distance_eval_ms,reduction_ms
+2,1,1,ok,4890373.324930225,4886431.821038013,0.08066220990215227,,17031.3,2631.9
+4,2,1,depth_wall,,560469.3367922169,,scale out of bounds,33912.3,5590.6

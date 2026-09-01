@@ -1,0 +1,10 @@
+operation,n,mean_ms,median_ms,min_ms,max_ms,p95_ms
+context_setup_incl_keygen,3,15786.8110,10977.5277,9461.2211,26921.6841,26921.6841
+encrypt_oem_3vectors,10,109.3368,109.4367,108.2798,110.5714,110.5714
+encrypted_interpolate_one_point,5,3603.6760,3603.3911,3592.8727,3624.5102,3624.5102
+encrypted_distance_sq_one_point,5,7446.8893,7434.1247,7426.1679,7471.2476,7471.2476
+decrypt_distance_sq,5,18.9250,18.9098,18.7415,19.2752,19.2752
+approach_b_distance_sq_plus_decrypt,5,7452.3494,7454.0544,7447.8148,7457.6672,7457.6672
+approach_c_scaled_polyval_sign_plus_decrypt,5,9584.3886,9587.8365,9573.2252,9594.3580,9594.3580
+approach_a_pairwise_homomorphic_min,10,2194.3540,2195.1323,2189.8643,2199.6678,2199.6678
+decrypt_scalar,5,6.8113,6.7561,6.7225,7.0200,7.0200

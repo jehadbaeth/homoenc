@@ -1,0 +1,5 @@
+quantity,value,unit
+object_a,STARLINK-35712,
+object_b,STARLINK-3845,
+t_cpa_offset_s,0.500000,s from OEM window center
+miss_distance_km,5.432028,km
