@@ -61,12 +61,15 @@ tbody tr:hover{ background:var(--surface-alt); }
 .tag.b{ background:var(--surface-alt); color:var(--ink-soft); }
 .tag.good{ background:var(--good-soft); color:var(--good); }
 .tag.bad{ background:var(--bad-soft); color:var(--bad); }
+.tag.warn{ background:var(--warn-soft); color:var(--warn); }
 .bars{ margin:18px 0 24px; }
 .bar-row{ display:grid; grid-template-columns:200px 1fr 110px; align-items:center; gap:10px; margin:7px 0; font-size:12.5px; }
 .bar-row .name{ font-family:var(--mono); color:var(--ink-soft); }
 .bar-track{ background:var(--surface-alt); border-radius:2px; height:14px; position:relative; overflow:hidden; }
 .bar-fill{ height:100%; border-radius:2px; background:var(--accent); }
 .bar-row .val{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums; }
+.bar-threshold{ position:absolute; top:-3px; bottom:-3px; width:0; border-left:1px dashed var(--bad); z-index:1; }
+.bar-legend{ font-size:11.5px; color:var(--ink-soft); margin:-8px 0 18px; font-family:var(--mono); }
 .flow{ display:flex; align-items:stretch; gap:0; margin:20px 0; overflow-x:auto; border:1px solid var(--rule); }
 .flow-step{ flex:1; min-width:170px; padding:16px; position:relative; border-right:1px solid var(--rule); }
 .flow-step:last-child{ border-right:none; }
@@ -380,6 +383,12 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   conflates two different threat models, and they point to opposite recommendations, so they need to be
   separated before the table means anything.</p>
 
+  <div class="flow">
+    <div class="flow-step once"><div class="who">Data owner(s), locally</div><div class="what">Encrypt own OEM under own key. Orbit shape and raw positions never leave this step in the clear.</div><div class="cost">1 owner (Model 1) or 2 (Model 2)</div></div>
+    <div class="flow-step once"><div class="who">Infrastructure / OKAPI:Orbits</div><div class="what">Homomorphic interpolation, distance², threshold, sum — entirely on ciphertext</div><div class="cost">zero <code>.decrypt()</code> calls, ever, in any approach</div></div>
+    <div class="flow-step"><div class="who">Whoever holds the decryption key</div><div class="what"><b>Model 1:</b> the data owner decrypts — give them the fullest result the approach supports. <b>Model 2:</b> the counterparty or a neutral service decrypts — the B→C→A→D/E disclosure spectrum below governs how much they see.</div><div class="cost">only place plaintext exists after step 1</div></div>
+  </div>
+
   <h3>Model 1 — the data-owning customer vs. the infrastructure operator</h3>
   <p>This is the primary case for an actual OKAPI:Orbits deployment: a customer submits their own encrypted
   orbital data, an operator (OKAPI:Orbits' own service, or whatever cloud it runs on) performs the
@@ -416,6 +425,14 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       </tbody>
     </table>
   </div>
+  <div class="bars">
+    <div class="bar-row"><span class="name">B — full curve</span><div class="bar-track"><div class="bar-fill" style="width:100%; background:var(--bad);"></div></div><span class="val">most leaked</span></div>
+    <div class="bar-row"><span class="name">C — thresholded flag</span><div class="bar-track"><div class="bar-fill" style="width:40%; background:var(--warn);"></div></div><span class="val">threshold only</span></div>
+    <div class="bar-row"><span class="name">A — full argmin</span><div class="bar-track"><div class="bar-fill" style="width:20%; background:var(--warn);"></div></div><span class="val">one distance</span></div>
+    <div class="bar-row"><span class="name">D — flag-sum</span><div class="bar-track"><div class="bar-fill" style="width:4%; background:var(--good);"></div></div><span class="val">count only*</span></div>
+    <div class="bar-row"><span class="name">E — flag-sum, bootstrapped</span><div class="bar-track"><div class="bar-fill" style="width:4%; background:var(--good);"></div></div><span class="val">count only</span></div>
+  </div>
+  <p class="bar-legend">qualitative disclosure toward a non-owning receiving party (Model 2), B highest to E lowest. *D's count is not trustworthy at this precision — see below.</p>
   <p>None of these five requires either party's orbit <i>shape</i> to become public — the improvement over
   the SGP4 study's design holds across all of them. Among B, C, and A, the tradeoff is purely about
   <i>how much of the distance signal</i> the evaluating party gets to see, and it scales inversely with
@@ -424,6 +441,25 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   isn't trustworthy at this problem's precision on TenSEAL/SEAL, while E's is — on a different backend, built
   from source, under security parameters that are explicitly not production-grade. Whether that tradeoff is
   worth it for a given deployment is a real decision, not a foregone conclusion.</p>
+
+  <h3>Attack vectors considered</h3>
+  <p>Confidentiality against a non-key-holding party is what CKKS gives us for free. Everything else — the
+  rows below — is either handled by a specific design choice already described above, or explicitly out of
+  scope for this study and flagged as such rather than silently assumed away:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Attack vector</th><th style="text-align:left;">Concern</th><th style="text-align:left;">Status here</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag good">handled</span> Honest-but-curious infrastructure</td><td style="text-align:left; font-family:var(--sans);">Operator (or its cloud host) inspects ciphertexts, memory, or logs to learn orbital data</td><td style="text-align:left; font-family:var(--sans);">Mitigated by construction — the operator never holds a decryption key in any of the five approaches; its entire view is ciphertext, Model 1 above</td></tr>
+        <tr><td><span class="tag bad">out of scope</span> Malicious / tampering infrastructure</td><td style="text-align:left; font-family:var(--sans);">Operator returns wrong ciphertexts, corrupts the computation, or swaps in a different customer's data</td><td style="text-align:left; font-family:var(--sans);">Not addressed — CKKS gives confidentiality, not integrity. A real deployment needs authenticated computation or verifiable-computing checks on top of this</td></tr>
+        <tr><td><span class="tag good">handled</span> Over-disclosure to a non-owning receiver</td><td style="text-align:left; font-family:var(--sans);">A counterparty or third-party service, decrypting the final result, learns more of the other side's orbit than the question required</td><td style="text-align:left; font-family:var(--sans);">Addressed by the B→C→A→D/E disclosure spectrum, Model 2 above — pick the coarsest output that still answers the operational question</td></tr>
+        <tr><td><span class="tag warn">acknowledged</span> Public candidate-time leakage</td><td style="text-align:left; font-family:var(--sans);">Every query time submitted to the pipeline comes from a plaintext SGP4/TLE search before any ciphertext exists</td><td style="text-align:left; font-family:var(--sans);">Not mitigated, treated as public metadata by design, the same status this study already gives interpolation-weight sample times — see the multi-event caveat below</td></tr>
+        <tr><td><span class="tag bad">out of scope</span> Collusion between infrastructure and one data owner</td><td style="text-align:left; font-family:var(--sans);">In Model 2, the operator and one operator's key holder combine what they each see to reconstruct the other operator's orbit</td><td style="text-align:left; font-family:var(--sans);">Not addressed — would need threshold/multi-key FHE or an MPC layer, neither built nor tested here</td></tr>
+        <tr><td><span class="tag warn">disclosed</span> Non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">This study runs on <code>HEStd_NotSet</code>, reduced ring dimensions, to keep iteration fast</td><td style="text-align:left; font-family:var(--sans);">Explicitly called out throughout rather than silently assumed production-grade — see the Latency and Findings sections</td></tr>
+        <tr><td><span class="tag good">measured</span> Approximate-arithmetic misclassification</td><td style="text-align:left; font-family:var(--sans);">CKKS's inherent rounding noise flips a borderline conjunction's classification</td><td style="text-align:left; font-family:var(--sans);">Bounded, not assumed: 7.1 m worst-case error against a 10 km threshold in scenario 1; scenario 2 shows correct classification down to a ~2.5×10⁻⁵ raw flag margin — thin, and called out as such, not claimed as a security guarantee</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section id="correctness">
@@ -494,6 +530,16 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       </tbody>
     </table>
   </div>
+  <div class="bars">
+    <div class="bar-row"><span class="name">Cluster 0 · 61.867 km</span><div class="bar-track"><div class="bar-fill" style="width:95.2%; background:var(--good);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">safe</span></div>
+    <div class="bar-row"><span class="name">Cluster 1 · 28.934 km</span><div class="bar-track"><div class="bar-fill" style="width:44.5%; background:var(--good);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">safe</span></div>
+    <div class="bar-row"><span class="name">Cluster 2 · 37.470 km</span><div class="bar-track"><div class="bar-fill" style="width:57.6%; background:var(--good);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">safe</span></div>
+    <div class="bar-row"><span class="name">Cluster 3 · 5.432 km</span><div class="bar-track"><div class="bar-fill" style="width:8.4%; background:var(--bad);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">VIOLATION</span></div>
+    <div class="bar-row"><span class="name">Cluster 4 · 13.276 km</span><div class="bar-track"><div class="bar-fill" style="width:20.4%; background:var(--warn);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">near-boundary</span></div>
+    <div class="bar-row"><span class="name">Cluster 5 · 20.363 km</span><div class="bar-track"><div class="bar-fill" style="width:31.3%; background:var(--good);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">safe</span></div>
+    <div class="bar-row"><span class="name">Cluster 6 · 11.698 km</span><div class="bar-track"><div class="bar-fill" style="width:18.0%; background:var(--warn);"></div><div class="bar-threshold" style="left:15.4%;"></div></div><span class="val">near-boundary</span></div>
+  </div>
+  <p class="bar-legend">bar length = miss distance (0–65 km); dashed line = the 10 km screening threshold. Red = genuine violation, amber = near-boundary non-event, green = clearly safe.</p>
   <p>Each cluster got its own ±40 s / 10 s-step local monitoring window (9 candidate points), the same
   window/step design as the single-event scenario applied per-event — 63 candidate points total, built from
   a single 293-sample OEM pair spanning all 7 clusters plus interpolation padding. Per the steering to focus
