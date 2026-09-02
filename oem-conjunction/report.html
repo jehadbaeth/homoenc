@@ -172,6 +172,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   <a href="#what-was-built">What was built</a> ·
   <a href="#privacy">Privacy model</a> ·
   <a href="#correctness">Correctness</a> ·
+  <a href="#multievent">Multi-event test</a> ·
   <a href="#reproduce">How to reproduce</a> ·
   <a href="#latency">Latency</a> ·
   <a href="#findings">Findings</a> ·
@@ -374,13 +375,38 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
 
 <section id="privacy">
   <div class="section-eyebrow">Privacy model</div>
-  <h2>What each approach actually discloses</h2>
-  <p>Unlike the SGP4 study, where the privacy limitation was a fixed property of the one design built,
-  these three approaches are genuinely different points on a disclosure spectrum, and picking between them
-  is a real design decision a customer would need to make:</p>
+  <h2>Two different things "privacy" can mean here</h2>
+  <p>The disclosure table below talks about what "the client learns" for each approach. That phrase quietly
+  conflates two different threat models, and they point to opposite recommendations, so they need to be
+  separated before the table means anything.</p>
+
+  <h3>Model 1 — the data-owning customer vs. the infrastructure operator</h3>
+  <p>This is the primary case for an actual OKAPI:Orbits deployment: a customer submits their own encrypted
+  orbital data, an operator (OKAPI:Orbits' own service, or whatever cloud it runs on) performs the
+  homomorphic computation, and only the customer's key ever decrypts anything. In this model the operator's
+  exposure is zero by construction, and it is the <i>same</i> zero for every approach below — B, C, A, D,
+  and E all keep every intermediate value in ciphertext right up until a <code>.decrypt()</code> call that
+  stands in for the customer's own machine, never the operator's. There is no privacy reason to hand this
+  customer a smaller answer than the approach can support: they already own the satellite and the risk
+  being assessed. So in Model 1, "the client learns X" in the table below should be read as a floor a real
+  deployment should exceed, not a ceiling to protect — decrypt the most actionable result available (which
+  specific candidate time is a violation, not just a count), because withholding detail from the data owner
+  buys no privacy against the party actually being kept out.</p>
+
+  <h3>Model 2 — two data-owning operators sharing one computation</h3>
+  <p>The disclosure spectrum below is a real, live design decision when there is a second party in the
+  loop: two satellite operators each contributing their own orbital data to the same conjunction check,
+  where the result also has to reach a party — the counterparty, or a neutral screening service — that
+  should not learn more of the other side's geometry than the question requires. Here, B vs. C vs. A vs.
+  D/E is a genuine dial: full curve, thresholded flag, single minimum, or count-only, in decreasing order
+  of what leaks toward whichever side receives and decrypts the answer.</p>
+  <p>The table below describes Model 2's dial. Under Model 1 all five rows collapse to "the infrastructure
+  operator learns nothing," and the open question shifts from how little to disclose to how much detail to
+  hand the data owner and how well each approach holds up under load — covered in
+  <a href="#correctness">Correctness</a> and the <a href="#multievent">multi-event test</a> below.</p>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Approach</th><th style="text-align:left;">What gets decrypted</th><th style="text-align:left;">What it reveals</th><th style="text-align:left;">Cost</th></tr></thead>
+      <thead><tr><th>Approach</th><th style="text-align:left;">What gets decrypted</th><th style="text-align:left;">What the receiving party learns (Model 2 — the party that isn't the data owner)</th><th style="text-align:left;">Cost</th></tr></thead>
       <tbody>
         <tr><td><span class="tag b">B</span> Full curve</td><td style="text-align:left; font-family:var(--sans);">distance_sq(t) at every grid point</td><td style="text-align:left; font-family:var(--sans);">Complete encounter geometry — shape, closing speed, exact miss distance</td><td style="text-align:left; font-family:var(--sans);">Lowest per-point cost</td></tr>
         <tr><td><span class="tag a">C</span> Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
@@ -442,6 +468,75 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   floor observed in the SGP4 study, and it's three orders of magnitude smaller than the 10 km threshold
   that would change any operational decision at these distances. At the conjunction itself, where the
   distances are much smaller, the error shrinks to about 2 cm.</p>
+</section>
+
+<section id="multievent">
+  <div class="section-eyebrow">Second scenario</div>
+  <h2>A harder, real multi-event test</h2>
+  <p>The single conjunction above is real data, but it is one event and it's not close to the decision
+  boundary. To stress the pipeline against something more realistic, we scanned the same real TLE pair
+  (<b>STARLINK-35712</b> / <b>STARLINK-3845</b>) over a ±3 h window instead of just the one known CPA, using
+  the same coarse-to-fine SGP4 search, generalized to report every local minimum rather than only the
+  global one. That search found <b>7 real close-approach events</b>, not constructed ones — including the
+  original 5.432 km violation, four clearly safe events (20–62 km), and two genuine non-events sitting just
+  outside the 10 km screening threshold:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Cluster</th><th>Offset from original CPA</th><th>Miss distance</th><th style="text-align:left;">Ground truth</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>−8438.0 s</td><td>61.867 km</td><td style="text-align:left; font-family:var(--sans);">safe</td></tr>
+        <tr><td>1</td><td>−5625.0 s</td><td>28.934 km</td><td style="text-align:left; font-family:var(--sans);">safe</td></tr>
+        <tr><td>2</td><td>−2812.5 s</td><td>37.470 km</td><td style="text-align:left; font-family:var(--sans);">safe</td></tr>
+        <tr><td>3</td><td>+0.5 s</td><td><b>5.432 km</b></td><td style="text-align:left; font-family:var(--sans);"><b>violation</b> — the original scenario's event</td></tr>
+        <tr><td>4</td><td>+2813.5 s</td><td>13.276 km</td><td style="text-align:left; font-family:var(--sans);">safe, but only 3.3 km outside the line</td></tr>
+        <tr><td>5</td><td>+5626.5 s</td><td>20.363 km</td><td style="text-align:left; font-family:var(--sans);">safe</td></tr>
+        <tr><td>6</td><td>+8439.5 s</td><td>11.698 km</td><td style="text-align:left; font-family:var(--sans);">safe, but only 1.7 km outside the line</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Each cluster got its own ±40 s / 10 s-step local monitoring window (9 candidate points), the same
+  window/step design as the single-event scenario applied per-event — 63 candidate points total, built from
+  a single 293-sample OEM pair spanning all 7 clusters plus interpolation padding. Per the steering to focus
+  on what actually works, this test concentrated on Approach C and Approach E; Approach D was run once to
+  confirm its known saturation failure generalizes to a harder case, and is not re-analyzed further here —
+  see <a href="#findings">Findings</a> for the mechanism.</p>
+
+  <h3>Approach C and Approach E both matched plaintext exactly</h3>
+  <p>Every one of the 63 encrypted per-point results — from both Approach C (per-point ±1 flags, no
+  bootstrapping) and Approach E (bootstrapped, using the identical <code>TOTAL_COMPOSITIONS=11</code>
+  constant tuned on the single-event scenario, not retuned for this one) — was diffed against
+  <code>10_multi_plaintext_reference.py</code>. Both scored <b>0 mismatches out of 63 points</b>. Approach
+  E's decrypted sum came out <b>61.0000</b> against an ideal of 61 (7 clusters × 9 points, 1 cluster
+  flagged), giving an estimated violation count of exactly 1, matching ground truth. Approach D, run for
+  comparison, produced a decrypted sum of 1.6318 against the same ideal of 61 — the same saturation failure
+  already documented for the single-event scenario, now confirmed on a scenario with real signal spread
+  across seven events instead of one.</p>
+  <p>That Approach E reproduces this exactly, using the single-event scenario's tuning unchanged, is the
+  strongest result in this report: it means the fixed bootstrapping recipe is not overfit to one geometry.</p>
+
+  <div class="finding bad"><b>The correct classification at the two near-boundary events carried essentially
+  zero confidence margin.</b> Approach C's raw (pre-threshold) flag values at the three points closest to
+  each cluster's own minimum were: cluster 3 (5.432 km, the real violation) <code>−4.76×10⁻⁵</code>; cluster
+  4 (13.276 km, safe) <code>+5.15×10⁻⁵</code>; cluster 6 (11.698 km, safe) <code>+2.49×10⁻⁵</code>. All three
+  are within noise-floor distance of zero — the sign, and therefore the classification, was correct in
+  every case, but a violation a few hundred meters closer to the threshold on either side could plausibly
+  flip it at this <code>SCALE_KM2</code> operating point. This test demonstrates that these two specific
+  real near-boundary cases classify correctly, not that the pipeline has comfortable margin near the
+  decision boundary in general — those are different claims, and only the first one is proven here.</div>
+  <div class="finding good"><b>What Model 1 (customer vs. infrastructure) actually recommends here.</b> Since
+  the infrastructure operator's exposure is zero regardless of which approach runs, and the customer already
+  owns the risk being assessed, a real deployment should give the customer Approach C's per-cluster detail
+  (which of the 7 known times is the violation) rather than Approach E's aggregate-only count — decrypting
+  more costs nothing extra in privacy against the infrastructure. Approach E's aggregate-only design earns
+  its keep under Model 2, where the receiving party is not the data owner and a bare count is deliberately
+  less than a per-cluster answer.</div>
+  <div class="finding bad"><b>The 7 candidate times are a public input to this computation, not an
+  output.</b> <code>multi_ground_truth.csv</code> — and therefore every query time submitted to the
+  encrypted pipeline — comes from a plaintext SGP4 search run before any ciphertext exists. Whoever runs
+  Approach E already knows all 7 approach times going in; what stays hidden is which of them crosses the
+  threshold and (under Approach C/E) the distances themselves. The correct claim is "1 of these 7 known
+  times was a violation," not "there was 1 violation somewhere in a 3-hour window" — worth stating precisely
+  rather than letting the abstract framing overstate it.</div>
 </section>
 
 <section id="reproduce">
