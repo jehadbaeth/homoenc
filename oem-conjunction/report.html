@@ -151,12 +151,18 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   decrypt only the total): the mechanism is genuinely zero-disclosure and verified correct, but the
   resulting count is wrong (12 vs. the true 1) because the fitted comparator polynomial doesn't saturate
   across enough of the window, and fixing that by iterating it further hits the same depth wall as Approach
-  A. That is an honest negative result, not a fourth working option, and it points at what a
-  bootstrapping-capable backend (OpenFHE, not runnable here without a from-source build — see Findings)
-  would need to clear. Getting there also surfaced an important operational lesson: a badly scaled
-  comparator polynomial produces silently wrong answers that look like they could be right, which is a more
-  dangerous failure mode than an exception. All four approaches, the plaintext cross-check, and the real
-  orbital data used are in this repository.
+  A. That pointed at bootstrapping-capable CKKS as the one thing that could fix it, so we followed up with
+  <b>Approach E</b>: a from-source build of OpenFHE (the pip wheel for this problem is mislabeled and
+  doesn't run on this Darwin/arm64 machine) using its CKKS bootstrapping to sharpen the same sign polynomial
+  through all 11 compositions the plaintext math actually needs, instead of the 2 TenSEAL/SEAL allows.
+  Under non-production security parameters (explicitly disclosed — a real deployment needs a much larger
+  ring dimension and would be substantially slower per bootstrap), it works: the decrypted sum comes to
+  59.0000 against an ideal 59, correctly implying a count of 1 — the same true answer Approach D could not
+  reach. Getting there also surfaced two operational lessons: a badly scaled comparator polynomial produces
+  silently wrong answers that look like they could be right (a more dangerous failure mode than an
+  exception), and packing many points per ciphertext leaves unused padding slots sitting at CKKS's least
+  stable input, which chaotically corrupts a naive sum unless masked out explicitly. All five approaches,
+  the plaintext cross-check, and the real orbital data used are in this repository.
   </p>
   <p class="wide" style="max-width:70ch; font-size:13px; color:var(--ink-soft);">
   <b>Contents</b> ·
@@ -179,6 +185,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   <div class="tile"><div class="label">Approach A depth wall</div><div class="value">1 level</div><div class="sub">2nd reduction level throws, confirmed</div></div>
   <div class="tile"><div class="label">Per-point eval cost</div><div class="value">~7.5–9.6 s</div><div class="sub">one grid point, this context</div></div>
   <div class="tile"><div class="label">Peak RSS</div><div class="value">9.65 GB</div><div class="sub">3 sequential contexts, one process</div></div>
+  <div class="tile"><div class="label">Approach E flag-sum</div><div class="value">59.0000</div><div class="sub">vs. ideal 59, on OpenFHE with bootstrapping (non-production params)</div></div>
 </div>
 
 <section id="background">
@@ -298,6 +305,62 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   ciphertext can pass through, and this problem needs roughly five times that limit to saturate confidently
   across the full window. See <code>07_approach_d_flag_sum.py</code> and
   <code>08_sign_iteration_depth_wall.py</code> for the reproducible scripts.</p>
+
+  <h3>Approach E — OpenFHE bootstrapping closes the gap Approach D left open</h3>
+  <p>D's negative result traced to one specific cause: TenSEAL/SEAL's CKKS has no bootstrapping, so a
+  ciphertext can only pass through so many nonlinear stages before it runs out of depth. That leaves a real
+  question unanswered — is this a fundamental FHE limit, or an artifact of this one backend? OpenFHE
+  supports CKKS bootstrapping and was the direct way to test it, but the pip wheel
+  (<code>openfhe 1.5.1.0.24.4</code>) is mislabeled as universal while actually bundling
+  <code>x86_64-linux-gnu</code> binaries — it does not run on this Darwin/arm64 machine. We built OpenFHE
+  1.5.1 and its Python bindings from source instead (Homebrew's <code>libomp</code>, Xcode Command Line
+  Tools, <code>pybind11</code>) — a real source build, not a drop-in pip swap, documented in
+  <code>09_approach_e_openfhe_bootstrap.py</code>.</p>
+  <p><b>Security parameters, disclosed up front:</b> this build uses <code>HEStd_NotSet</code> at ring
+  dimension 2<sup>13</sup> — OpenFHE's own bootstrapping-demo parameters, chosen for iteration speed, not
+  128-bit security. A real deployment would need a ring dimension around 2<sup>16</sup>–2<sup>17</sup>, and
+  bootstrapping at that size is plausibly one to two orders of magnitude slower per call. Every number below
+  is a feasibility check on whether bootstrapping fixes the saturation problem at all, not a production
+  latency benchmark.</p>
+  <p>The pipeline packs all 61 grid points into a single ciphertext (one 64-slot block per point, of which
+  the Lagrange interpolation only needs 59), so one <code>EvalInnerProduct</code> per axis per OEM recovers
+  all 61 interpolated positions in a single pass. From there it's the same scaled-distance-then-sign-poly
+  pipeline as C and D, but composed against itself 11 times total — the same count the plaintext math in
+  D's own writeup showed this scenario's hardest point actually needs to saturate — with
+  <code>EvalBootstrap</code> inserted whenever the remaining depth budget dropped below 8. That took 3
+  bootstrap calls in total.</p>
+  <p>Building this surfaced a genuine bug, not just a tuning problem: the first working version returned a
+  decrypted sum of 56.4375, not 59. Cause: 5 of every 64 slots per block are unused padding sitting at input
+  0 — the unstable fixed point of the composed sign map (its own derivative there is ~3.4) — and ordinary
+  CKKS rounding noise in those slots gets chaotically amplified over 11 self-compositions into effectively
+  random ±1 values, independently per slot. A naive whole-block average silently folds that garbage into the
+  result. We independently confirmed this by decrypting the ciphertext before and after composition: the 59
+  real-sample slots for the t=0 block held a uniform −1 (max deviation 2.4×10⁻⁸) both before and after the
+  fix, while the 5 padding slots had flipped to +1 — exactly the failure mode described. The fix is an exact
+  plaintext one-hot mask (1.0 at one representative slot per point, 0.0 elsewhere) applied before
+  <code>EvalSum</code>, so the corrupted padding slots are eliminated by an exact zero instead of averaged
+  in. We reproduced the pre-fix value independently by reverting to the naive sum against the same pipeline
+  and got 56.437499658724306 — matching to nine significant figures, not a rounded-off approximation of the
+  claim.</p>
+  <p><b>Result:</b> the decrypted sum of all 61 saturated flags is 58.99999988 against an ideal 59 for the
+  true 1-of-61 ground truth — the same point (t=0) Approach C independently flags as below threshold. Reading
+  <code>(n − sum) / 2</code> now gives 1.0000, matching the true count of 1. This is what D could not
+  deliver: one decrypted number, with zero per-point disclosure in the delivered pipeline, that is actually
+  a trustworthy count at this problem's precision.</p>
+  <p>One limit worth stating plainly: 11 compositions was not a fixed constant, it was sized to this
+  scenario's hardest point (a true distance of 5.432 km against a 10 km threshold). The script has no
+  runtime check that saturation was actually reached — it reports the observed sum, not a pass/fail
+  assertion — so a different scenario with a candidate sitting even closer to the threshold could need more
+  compositions, and therefore more bootstraps, to produce an equally trustworthy sum. This is a working
+  demonstration at this scenario's precision, not a general-purpose encrypted counter that adapts itself.
+  Wall-clock for the full pipeline in our independent re-run, under the non-production parameters above: 811
+  ms context+keygen, 68 ms encrypt, 443 ms distance+scale, ~3.7 s across 3 bootstrap calls, ~1.57 s of
+  polynomial composition work interleaved with them, 44 ms for the final masked sum and decrypt — about 6.6
+  s total. See <code>09_approach_e_openfhe_bootstrap.py</code> for the reproducible script.</p>
+  <p>The honest way to state where this leaves D's negative result: the right conclusion was never "FHE
+  can't do this." It's "TenSEAL/SEAL's CKKS can't do this, and OpenFHE's CKKS bootstrapping can, at a
+  from-source-build and non-production-security-parameter cost we have not eliminated." Both are true, and
+  both are stated here rather than picking the more flattering one.</p>
 </section>
 
 <section id="privacy">
@@ -313,17 +376,19 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
         <tr><td><span class="tag b">B</span> Full curve</td><td style="text-align:left; font-family:var(--sans);">distance_sq(t) at every grid point</td><td style="text-align:left; font-family:var(--sans);">Complete encounter geometry — shape, closing speed, exact miss distance</td><td style="text-align:left; font-family:var(--sans);">Lowest per-point cost</td></tr>
         <tr><td><span class="tag a">C</span> Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
         <tr><td><span class="tag good">A</span> Full argmin</td><td style="text-align:left; font-family:var(--sans);">One final minimum value</td><td style="text-align:left; font-family:var(--sans);">Only the single closest distance found — nothing about other candidate times</td><td style="text-align:left; font-family:var(--sans);">log₂(K) reduction levels — hits a real depth wall at K=4</td></tr>
-        <tr><td><span class="tag good">D</span> Flag-sum</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure</td><td style="text-align:left; font-family:var(--sans);">Genuinely nothing per-point — but the sum is not a trustworthy count at this precision (see below)</td><td style="text-align:left; font-family:var(--sans);">Free on top of C — but unusable without more depth than this backend has</td></tr>
+        <tr><td><span class="tag good">D</span> Flag-sum</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure</td><td style="text-align:left; font-family:var(--sans);">Genuinely nothing per-point — but the sum is not a trustworthy count at this precision on TenSEAL/SEAL (see below)</td><td style="text-align:left; font-family:var(--sans);">Free on top of C — but unusable without more depth than this backend has</td></tr>
+        <tr><td><span class="tag good">E</span> Flag-sum, bootstrapped</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure in the delivered pipeline</td><td style="text-align:left; font-family:var(--sans);">Same as D, but the sum is now trustworthy (59.0000 vs. ideal 59) — on OpenFHE, from source, non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">3 bootstrap calls, ~6.6 s total under demo-grade parameters; production ring dimension untested</td></tr>
       </tbody>
     </table>
   </div>
-  <p>None of these four requires either party's orbit <i>shape</i> to become public — the improvement over
+  <p>None of these five requires either party's orbit <i>shape</i> to become public — the improvement over
   the SGP4 study's design holds across all of them. Among B, C, and A, the tradeoff is purely about
   <i>how much of the distance signal</i> the evaluating party gets to see, and it scales inversely with
   cost: the design that discloses the least (A) is also the one that runs into CKKS's hard depth limit
-  first. D is a different kind of result: it achieves zero per-point disclosure for free, but the resulting
-  aggregate isn't trustworthy at this problem's precision on this backend — a genuine "we checked, and it
-  doesn't work yet" finding, not a fourth usable option today.</p>
+  first. D and E are a different kind of result: both achieve zero per-point disclosure, but D's aggregate
+  isn't trustworthy at this problem's precision on TenSEAL/SEAL, while E's is — on a different backend, built
+  from source, under security parameters that are explicitly not production-grade. Whether that tradeoff is
+  worth it for a given deployment is a real decision, not a foregone conclusion.</p>
 </section>
 
 <section id="correctness">
@@ -380,11 +445,16 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   CelesTrak fetch) and writes <code>data/oem_a.csv</code>, <code>data/oem_b.csv</code>,
   <code>data/ground_truth.csv</code>. <code>01_plaintext_reference.py</code> — the plaintext cross-match algorithm.
   <code>02_approach_b_distance_curve.py</code>, <code>04_approach_c_thresholded_flags.py</code>,
-  <code>05_approach_a_toy_argmin.py</code>, <code>07_approach_d_flag_sum.py</code> — the four
-  encrypted approaches. <code>06_cross_validate.py</code> — diffs B and C against the plaintext
-  reference. <code>03_fit_sign_polynomial.py</code> — the offline comparator-polynomial fit
-  consumed by A, C, and D. <code>08_sign_iteration_depth_wall.py</code> — the encrypted
+  <code>05_approach_a_toy_argmin.py</code>, <code>07_approach_d_flag_sum.py</code> — four of the
+  five encrypted approaches, all on TenSEAL/SEAL. <code>06_cross_validate.py</code> — diffs B and C against
+  the plaintext reference. <code>03_fit_sign_polynomial.py</code> — the offline comparator-polynomial fit
+  consumed by A, C, D, and E. <code>08_sign_iteration_depth_wall.py</code> — the encrypted
   self-composition depth-wall check for D.</p>
+  <p><code>09_approach_e_openfhe_bootstrap.py</code> — Approach E, on OpenFHE instead of TenSEAL. This one
+  needs a from-source OpenFHE + <code>openfhe-python</code> build (the pip wheel does not run on
+  Darwin/arm64); it is not runnable with the same <code>pip install</code> as the other eight scripts. It
+  imports its own <code>openfhe</code> module rather than the shared <code>crypto_common.py</code> the
+  TenSEAL-based scripts use.</p>
   <div class="callout">
     Each encrypted stage takes several minutes and holds a ~1.3–1.5 GB CKKS context in memory. Run them
     one at a time — running two at once (as we did once, by mistake, while iterating) roughly doubles
@@ -491,7 +561,8 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       <div class="finding bad"><b>Thresholded disclosure (C) crushes resolution near the decision boundary by design.</b> The scale needed to keep far-away points inside the comparator polynomial's valid domain (chosen from the observed ~4.89M km² max) means the flag near the actual threshold carries very low confidence: raw flag magnitude is ~0.00005–0.015 within 20 s of the true crossing, versus ~0.37–1.0 far from it. The binary decision is still correct here, but a customer who wanted the flag's <i>margin</i> would find it nearly unusable near the boundary.</div>
       <div class="finding bad"><b>Per-point cost is steep and doesn't shrink with cleverness.</b> 7.6–10 seconds of wall-clock per grid point, per object pair, on this context. A screening service checking many object pairs at fine time resolution needs to budget CPU-seconds per candidate point, not per pair.</div>
       <div class="finding bad"><b>Zero-disclosure flag-sum (D) is real but not trustworthy here.</b> Summing all 61 threshold flags before decrypting is a genuinely correct zero-per-point-disclosure design, and the sum itself is computed correctly (verified against manual plaintext summation). But interpreting that sum as a count fails badly (12 vs. the true 1) because the fitted sign polynomial only saturates near the window's edges. Sharpening it by self-composition works in plaintext but hits the identical depth wall as Approach A after only 2 extra compositions, when roughly 10 are needed. This backend cannot deliver a trustworthy zero-disclosure count at this precision.</div>
-      <div class="finding bad"><b>The obvious escape hatch, CKKS bootstrapping, isn't available on this stack.</b> TenSEAL (wrapping Microsoft SEAL) has never implemented CKKS bootstrapping — confirmed by introspecting the library directly, not assumed. OpenFHE does support it and is pip-installable, but the published wheel (<code>openfhe 1.5.1.0.24.4</code>) is mislabeled as universal while actually bundling <code>x86_64-linux-gnu</code> shared objects — it does not run on this Darwin/arm64 machine. A real evaluation of OpenFHE here means building it from source, not a pip install.</div>
+      <div class="finding bad"><b>Making bootstrapping work here required a from-source build and non-production security.</b> TenSEAL (wrapping Microsoft SEAL) has never implemented CKKS bootstrapping — confirmed by introspecting the library directly, not assumed — and OpenFHE's own pip wheel (<code>openfhe 1.5.1.0.24.4</code>) is mislabeled as universal while actually bundling <code>x86_64-linux-gnu</code> shared objects, so it doesn't run on this Darwin/arm64 machine either. Approach E's result depends on a source build most deployments won't want to maintain, and on <code>HEStd_NotSet</code> security parameters at a ring dimension far below what a real deployment needs — untested at production scale, and plausibly one to two orders of magnitude slower per bootstrap there.</div>
+      <div class="finding bad"><b>Approach E's composition count is tuned to this scenario, not proven general.</b> 11 self-compositions were sized to this scenario's hardest point (5.432 km against a 10 km threshold); the script doesn't assert saturation was actually reached, it just reports the resulting sum. A candidate sitting closer to the threshold in a different scenario could need more compositions and bootstraps to produce an equally trustworthy count.</div>
     </div>
     <div class="findings-col">
       <h3><span class="dot good"></span>What holds up</h3>
@@ -501,6 +572,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       <div class="finding good"><b>The disclosure/cost tradeoff is legible and lets a customer actually choose.</b> Full curve, thresholded flag, or full argmin map cleanly onto "how much do you trust the evaluating party," and the cost of each is now measured, not estimated — a real basis for a design conversation with a customer rather than a single fixed answer.</div>
       <div class="finding good"><b>The flag-sum mechanism (ciphertext addition being free) is a real, reusable building block.</b> Aggregating many per-point results into one decrypted number costs nothing extra in multiplicative depth. That primitive is sound; what's currently missing is a comparator sharp enough to feed it at this problem's precision, which is a depth-budget problem, not a design flaw in the aggregation itself.</div>
       <div class="finding good"><b>Negative results were chased down to a root cause, not left as "it didn't work."</b> The flag-sum's wrong count, and the failure of self-composition to fix it, both trace to the same measured, falsifiable limit: this backend supports at most 2 sequential polyval compositions after Approach C's own distance-and-flag pipeline before <code>scale out of bounds</code>, while saturating this problem's hardest point needs roughly 10 — a ~5× gap in sequential nonlinear evaluations, not a vague "FHE is too slow."</div>
+      <div class="finding good"><b>Bootstrapping genuinely fixes the exact problem that broke Approach D — independently verified, not taken on faith.</b> On a from-source OpenFHE build, the same flag-sum pipeline with <code>EvalBootstrap</code> inserted between compositions ran all 11 needed compositions and produced a decrypted sum of 58.99999988 against an ideal 59, implying a count of 1 — matching the true ground truth and the same point (t=0) Approach C flags independently. We re-ran the full script from scratch and got an exact match, and separately reproduced a padding-slot corruption bug the implementation caught (56.4375 without a one-hot mask before summing, 59.0000 with it) by decrypting the raw ciphertext slots before and after composition and reverting the fix by hand. This answers the question Approach D's negative result left open: the saturation ceiling is a property of TenSEAL/SEAL specifically, not of CKKS or FHE in general.</div>
     </div>
   </div>
 </section>

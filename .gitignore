@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 
+vendor/
+
 java-stack/build/
 java-stack/.gradle/
 java-stack/native/SEAL/
