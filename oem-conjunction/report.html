@@ -147,10 +147,16 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   time, CDM-style) matches the plaintext threshold decision on all 61 tested points. <b>Approach A</b>
   (never decrypt anything but the final minimum) works for a single pairwise comparison but hits a real,
   reproducible CKKS depth wall the moment the reduction tree grows past one level — confirmed empirically,
-  not assumed. Getting there also surfaced an important operational lesson: a badly scaled comparator
-  polynomial produces silently wrong answers that look like they could be right, which is a more dangerous
-  failure mode than an exception. All three approaches, the plaintext cross-check, and the real orbital
-  data used are in this repository.
+  not assumed. We also tried a fourth design, <b>Approach D</b> (sum all per-point flags homomorphically and
+  decrypt only the total): the mechanism is genuinely zero-disclosure and verified correct, but the
+  resulting count is wrong (12 vs. the true 1) because the fitted comparator polynomial doesn't saturate
+  across enough of the window, and fixing that by iterating it further hits the same depth wall as Approach
+  A. That is an honest negative result, not a fourth working option, and it points at what a
+  bootstrapping-capable backend (OpenFHE, not runnable here without a from-source build — see Findings)
+  would need to clear. Getting there also surfaced an important operational lesson: a badly scaled
+  comparator polynomial produces silently wrong answers that look like they could be right, which is a more
+  dangerous failure mode than an exception. All four approaches, the plaintext cross-check, and the real
+  orbital data used are in this repository.
   </p>
   <p class="wide" style="max-width:70ch; font-size:13px; color:var(--ink-soft);">
   <b>Contents</b> ·
@@ -260,6 +266,35 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   pass. This polynomial is only valid — and only sign-preserving — for inputs actually inside
   <code>[-1, 1]</code>; anything scaled outside that range does not fail cleanly (see
   <a href="#findings">Findings</a>).</p>
+
+  <h3>Approach D — homomorphic flag-sum, and why it doesn't close the gap</h3>
+  <p>The natural follow-up question after B/C/A: is there a case where the whole computation stays
+  encrypted and only a final answer comes out, with zero intermediate disclosure? A, B, and C each fail
+  that bar for a different reason — A can't finish the reduction at all past K=2, B decrypts the full curve
+  by design, and C decrypts 61 individual flags by design. We tried one more design: sum all 61 per-point
+  flag ciphertexts from C <i>before</i> decrypting anything, and decrypt only that one sum. Ciphertext
+  addition costs zero multiplicative depth, so this is free relative to C's own per-point cost, and only
+  one number ever leaves the encrypted domain — not which time was flagged, not any distance, not any
+  per-point confidence.</p>
+  <p>The summation mechanism itself is verified correct: the homomorphic sum reproduces, to four decimal
+  places, the manual plaintext sum of Approach C's own already-decrypted flags (37.3017 both ways). But the
+  sum is not a usable proxy for "how many points are below threshold." With exactly 1 of 61 points genuinely
+  below threshold, an ideal step-function flag would sum to 61 − 2 = 59; the actual sum is 37.3, because the
+  fitted sign polynomial only saturates to a confident ±1 within roughly ±100 s of the conjunction — across
+  most of the 300 s window it is still close to linear (see <a href="#findings">Findings</a>). Reading
+  <code>(n − sum) / 2</code> as a count gives 12, not 1, and we are not reporting that as a working
+  estimator.</p>
+  <p>We then checked whether the standard fix — composing the sign polynomial against its own output,
+  <code>f(f(x))</code>, which sharpens toward ±1 with each iteration — could rescue this without
+  bootstrapping. In plaintext it works cleanly: 10 extra compositions correctly classify all 61 points,
+  including the hardest one (the true conjunction point, whose scaled input is only ~1.4×10⁻⁵ from zero).
+  Under this study's actual CKKS parameters, only 2 extra compositions fit before the identical
+  <code>ValueError: scale out of bounds</code> depth wall Approach A hits at K=4 — the same structural
+  ceiling, reached from a different direction. This is genuine negative evidence, not a bug: TenSEAL/SEAL's
+  CKKS implementation has no bootstrapping, so there is a hard limit on how many nonlinear stages one
+  ciphertext can pass through, and this problem needs roughly five times that limit to saturate confidently
+  across the full window. See <code>07_approach_d_flag_sum.py</code> and
+  <code>08_sign_iteration_depth_wall.py</code> for the reproducible scripts.</p>
 </section>
 
 <section id="privacy">
@@ -275,13 +310,17 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
         <tr><td><span class="tag b">B</span> Full curve</td><td style="text-align:left; font-family:var(--sans);">distance_sq(t) at every grid point</td><td style="text-align:left; font-family:var(--sans);">Complete encounter geometry — shape, closing speed, exact miss distance</td><td style="text-align:left; font-family:var(--sans);">Lowest per-point cost</td></tr>
         <tr><td><span class="tag a">C</span> Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
         <tr><td><span class="tag good">A</span> Full argmin</td><td style="text-align:left; font-family:var(--sans);">One final minimum value</td><td style="text-align:left; font-family:var(--sans);">Only the single closest distance found — nothing about other candidate times</td><td style="text-align:left; font-family:var(--sans);">log₂(K) reduction levels — hits a real depth wall at K=4</td></tr>
+        <tr><td><span class="tag good">D</span> Flag-sum</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure</td><td style="text-align:left; font-family:var(--sans);">Genuinely nothing per-point — but the sum is not a trustworthy count at this precision (see below)</td><td style="text-align:left; font-family:var(--sans);">Free on top of C — but unusable without more depth than this backend has</td></tr>
       </tbody>
     </table>
   </div>
-  <p>None of these three requires either party's orbit <i>shape</i> to become public — the improvement over
-  the SGP4 study's design holds across all three. The tradeoff that remains is purely about <i>how much of
-  the distance signal</i> the evaluating party gets to see, and it scales inversely with cost: the design
-  that discloses the least (A) is also the one that runs into CKKS's hard depth limit first.</p>
+  <p>None of these four requires either party's orbit <i>shape</i> to become public — the improvement over
+  the SGP4 study's design holds across all of them. Among B, C, and A, the tradeoff is purely about
+  <i>how much of the distance signal</i> the evaluating party gets to see, and it scales inversely with
+  cost: the design that discloses the least (A) is also the one that runs into CKKS's hard depth limit
+  first. D is a different kind of result: it achieves zero per-point disclosure for free, but the resulting
+  aggregate isn't trustworthy at this problem's precision on this backend — a genuine "we checked, and it
+  doesn't work yet" finding, not a fourth usable option today.</p>
 </section>
 
 <section id="correctness">
@@ -336,11 +375,13 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   bare name):</p>
   <p><code>data/find_cpa_and_build_oems.py</code> — fetches nothing (TLEs are hardcoded from a prior
   CelesTrak fetch) and writes <code>data/oem_a.csv</code>, <code>data/oem_b.csv</code>,
-  <code>data/ground_truth.csv</code>. <code>01_plaintext_reference.py</code> — the plaintext cross-match
-  algorithm. <code>02_approach_b_distance_curve.py</code>, <code>04_approach_c_thresholded_flags.py</code>,
-  <code>05_approach_a_toy_argmin.py</code> — the three encrypted approaches.
-  <code>06_cross_validate.py</code> — diffs B and C against the plaintext reference.
-  <code>03_fit_sign_polynomial.py</code> — the offline comparator-polynomial fit consumed by A and C.</p>
+  <code>data/ground_truth.csv</code>. <code>01_plaintext_reference.py</code> — the plaintext cross-match algorithm.
+  <code>02_approach_b_distance_curve.py</code>, <code>04_approach_c_thresholded_flags.py</code>,
+  <code>05_approach_a_toy_argmin.py</code>, <code>07_approach_d_flag_sum.py</code> — the four
+  encrypted approaches. <code>06_cross_validate.py</code> — diffs B and C against the plaintext
+  reference. <code>03_fit_sign_polynomial.py</code> — the offline comparator-polynomial fit
+  consumed by A, C, and D. <code>08_sign_iteration_depth_wall.py</code> — the encrypted
+  self-composition depth-wall check for D.</p>
   <div class="callout">
     Each encrypted stage takes several minutes and holds a ~1.3–1.5 GB CKKS context in memory. Run them
     one at a time — running two at once (as we did once, by mistake, while iterating) roughly doubles
@@ -446,6 +487,8 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       <div class="finding bad"><b>A badly scaled comparator polynomial fails silently, not loudly — and that's the more dangerous failure mode.</b> Before the scale constant was corrected (public dynamic range of distance² in this scenario spans ~30 to ~4.89 million km², and an initial guess of 2,000 was far too small), Approach C flagged 61 of 61 points as "below threshold" instead of the correct 1, and Approach A variously threw an exception or decrypted to physically nonsensical values (as large as 10⁹¹) that did <i>not</i> raise any error. A `decrypt()` call that doesn't throw is not evidence the result is right — only comparing against a plaintext ground truth caught this.</div>
       <div class="finding bad"><b>Thresholded disclosure (C) crushes resolution near the decision boundary by design.</b> The scale needed to keep far-away points inside the comparator polynomial's valid domain (chosen from the observed ~4.89M km² max) means the flag near the actual threshold carries very low confidence: raw flag magnitude is ~0.00005–0.015 within 20 s of the true crossing, versus ~0.37–1.0 far from it. The binary decision is still correct here, but a customer who wanted the flag's <i>margin</i> would find it nearly unusable near the boundary.</div>
       <div class="finding bad"><b>Per-point cost is steep and doesn't shrink with cleverness.</b> 7.6–10 seconds of wall-clock per grid point, per object pair, on this context. A screening service checking many object pairs at fine time resolution needs to budget CPU-seconds per candidate point, not per pair.</div>
+      <div class="finding bad"><b>Zero-disclosure flag-sum (D) is real but not trustworthy here.</b> Summing all 61 threshold flags before decrypting is a genuinely correct zero-per-point-disclosure design, and the sum itself is computed correctly (verified against manual plaintext summation). But interpreting that sum as a count fails badly (12 vs. the true 1) because the fitted sign polynomial only saturates near the window's edges. Sharpening it by self-composition works in plaintext but hits the identical depth wall as Approach A after only 2 extra compositions, when roughly 10 are needed. This backend cannot deliver a trustworthy zero-disclosure count at this precision.</div>
+      <div class="finding bad"><b>The obvious escape hatch, CKKS bootstrapping, isn't available on this stack.</b> TenSEAL (wrapping Microsoft SEAL) has never implemented CKKS bootstrapping — confirmed by introspecting the library directly, not assumed. OpenFHE does support it and is pip-installable, but the published wheel (<code>openfhe 1.5.1.0.24.4</code>) is mislabeled as universal while actually bundling <code>x86_64-linux-gnu</code> shared objects — it does not run on this Darwin/arm64 machine. A real evaluation of OpenFHE here means building it from source, not a pip install.</div>
     </div>
     <div class="findings-col">
       <h3><span class="dot good"></span>What holds up</h3>
@@ -453,6 +496,8 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       <div class="finding good"><b>Approaches B and C are both correct, and both practical.</b> B matches plaintext to within ~2 cm at the actual conjunction and ~7 m (3.2×10⁻⁶ relative) at the window's far edges; C's threshold decision agrees with plaintext on all 61 tested points. Neither depends on a deep reduction tree, so neither is exposed to the depth wall that breaks A.</div>
       <div class="finding good"><b>The depth wall for A is now honestly characterized, not assumed.</b> An earlier diagnosis mistook a scaling bug for "the depth wall failing silently" — a real methodological trap. Once the scale was corrected, the true, narrower finding is: K=2 succeeds cleanly, K=4 fails loudly and reproducibly at level 2. That is a precise, falsifiable claim about this context's limits, not a vague one.</div>
       <div class="finding good"><b>The disclosure/cost tradeoff is legible and lets a customer actually choose.</b> Full curve, thresholded flag, or full argmin map cleanly onto "how much do you trust the evaluating party," and the cost of each is now measured, not estimated — a real basis for a design conversation with a customer rather than a single fixed answer.</div>
+      <div class="finding good"><b>The flag-sum mechanism (ciphertext addition being free) is a real, reusable building block.</b> Aggregating many per-point results into one decrypted number costs nothing extra in multiplicative depth. That primitive is sound; what's currently missing is a comparator sharp enough to feed it at this problem's precision, which is a depth-budget problem, not a design flaw in the aggregation itself.</div>
+      <div class="finding good"><b>Negative results were chased down to a root cause, not left as "it didn't work."</b> The flag-sum's wrong count, and the failure of self-composition to fix it, both trace to the same measured, falsifiable limit: ~16 usable CKKS levels on this backend, versus the ~11 nonlinear compositions this precision needs. That is a specific, actionable spec for what a bootstrapping-capable backend would need to clear, not a vague "FHE is too slow."</div>
     </div>
   </div>
 </section>
