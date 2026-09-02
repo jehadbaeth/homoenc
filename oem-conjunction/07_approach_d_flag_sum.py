@@ -10,21 +10,29 @@ That mechanism is verified correct: the homomorphic sum reproduces, to 4
 decimal places, the manual sum of Approach C's own decrypted per-point flags
 (both come out to 37.3017 for this scenario). But the sum is NOT a usable
 proxy for "how many points are below threshold." The fitted sign polynomial
-(03_fit_sign_polynomial.py) only saturates to a confident +-1 within about
-+-100s of the conjunction; across most of the 300s window it is still
-linear-ish (slope ~3.4 near zero, from SCALE_KM2 = 5,000,000). With 1 point
-genuinely below threshold, an ideal step function would sum to 61 - 2 = 59;
-the actual sum is 37.3, because 45 of the 61 points never saturate. Treating
-"(n - sum) / 2" as a count is wrong (it reports 12, not 1) and is not
-reported here as a working estimator.
+(03_fit_sign_polynomial.py) only reaches a confident +-1 outside roughly
++-230s of the conjunction (16 of 61 points); the other 45 -- including every
+point near the decision boundary -- sit in its near-linear region (its
+derivative at the origin is ~3.4, a slope forced small by SCALE_KM2 =
+5,000,000 mapping distance_sq near the threshold to inputs near zero). With
+1 point genuinely below threshold, an ideal step function would sum to
+61 - 2 = 59; the actual sum is 37.3, because 45 of the 61 points never
+saturate. Treating "(n - sum) / 2" as a count is wrong (it reports 12, not
+1) and is not reported here as a working estimator.
 
 We also checked whether iterating the sign polynomial against its own output
 (the standard sharpening trick: f(f(x)) pushes values away from the x=0
-fixed point) could fix this without bootstrapping. In plaintext it works --
-10 extra compositions correctly classify all 61 points. But under the
-current CKKS parameters (TenSEAL/SEAL, ~16 usable levels) only 2 extra
-compositions fit before the identical `ValueError: scale out of bounds`
-depth wall documented for Approach A (05_approach_a_toy_argmin.py) at K=4.
+fixed point) could fix this without bootstrapping. Sign was never wrong --
+Approach C already classifies all 61 points correctly with one evaluation --
+what's missing is saturation. In plaintext, 10 extra compositions saturate
+all 61 flags to +-1 closely enough for their sum to be read as a count. But
+under the current CKKS parameters (TenSEAL/SEAL), only 2 extra compositions
+fit after Approach C's own distance-and-flag pipeline before the identical
+`ValueError: scale out of bounds` depth wall documented for Approach A
+(05_approach_a_toy_argmin.py) at K=4 -- roughly a 5x gap in sequential
+nonlinear evaluations, not a level-count mismatch (each degree-27 polyval
+composition consumes several of this backend's ~16 usable levels on its
+own, so "16 levels" and "10 compositions" are not directly comparable).
 This is the same structural limit reached from a different direction, not a
 new bug: TenSEAL/SEAL CKKS has no bootstrapping, so there is a hard ceiling
 on how many nonlinear (nonaddition) stages a single ciphertext can pass

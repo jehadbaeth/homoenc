@@ -280,14 +280,17 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   places, the manual plaintext sum of Approach C's own already-decrypted flags (37.3017 both ways). But the
   sum is not a usable proxy for "how many points are below threshold." With exactly 1 of 61 points genuinely
   below threshold, an ideal step-function flag would sum to 61 − 2 = 59; the actual sum is 37.3, because the
-  fitted sign polynomial only saturates to a confident ±1 within roughly ±100 s of the conjunction — across
-  most of the 300 s window it is still close to linear (see <a href="#findings">Findings</a>). Reading
+  fitted sign polynomial only reaches a confident ±1 outside roughly ±230 s of the conjunction (16 of the 61
+  points); the remaining 45 — including every point near the decision boundary — sit in its near-linear
+  region (|flag| ≤ 0.37 within ±100 s, ≤ 0.015 within ±20 s; see <a href="#findings">Findings</a>). Reading
   <code>(n − sum) / 2</code> as a count gives 12, not 1, and we are not reporting that as a working
   estimator.</p>
   <p>We then checked whether the standard fix — composing the sign polynomial against its own output,
   <code>f(f(x))</code>, which sharpens toward ±1 with each iteration — could rescue this without
-  bootstrapping. In plaintext it works cleanly: 10 extra compositions correctly classify all 61 points,
-  including the hardest one (the true conjunction point, whose scaled input is only ~1.4×10⁻⁵ from zero).
+  bootstrapping. In plaintext it works cleanly: sign was never wrong (Approach C already classifies all 61
+  points correctly with a single evaluation), but 10 extra compositions saturate all 61 flags to ±1 closely
+  enough for their sum to be read as a count, including the hardest case (the true conjunction point, whose
+  scaled input is only ~1.4×10⁻⁵ from zero).
   Under this study's actual CKKS parameters, only 2 extra compositions fit before the identical
   <code>ValueError: scale out of bounds</code> depth wall Approach A hits at K=4 — the same structural
   ceiling, reached from a different direction. This is genuine negative evidence, not a bug: TenSEAL/SEAL's
@@ -497,7 +500,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       <div class="finding good"><b>The depth wall for A is now honestly characterized, not assumed.</b> An earlier diagnosis mistook a scaling bug for "the depth wall failing silently" — a real methodological trap. Once the scale was corrected, the true, narrower finding is: K=2 succeeds cleanly, K=4 fails loudly and reproducibly at level 2. That is a precise, falsifiable claim about this context's limits, not a vague one.</div>
       <div class="finding good"><b>The disclosure/cost tradeoff is legible and lets a customer actually choose.</b> Full curve, thresholded flag, or full argmin map cleanly onto "how much do you trust the evaluating party," and the cost of each is now measured, not estimated — a real basis for a design conversation with a customer rather than a single fixed answer.</div>
       <div class="finding good"><b>The flag-sum mechanism (ciphertext addition being free) is a real, reusable building block.</b> Aggregating many per-point results into one decrypted number costs nothing extra in multiplicative depth. That primitive is sound; what's currently missing is a comparator sharp enough to feed it at this problem's precision, which is a depth-budget problem, not a design flaw in the aggregation itself.</div>
-      <div class="finding good"><b>Negative results were chased down to a root cause, not left as "it didn't work."</b> The flag-sum's wrong count, and the failure of self-composition to fix it, both trace to the same measured, falsifiable limit: ~16 usable CKKS levels on this backend, versus the ~11 nonlinear compositions this precision needs. That is a specific, actionable spec for what a bootstrapping-capable backend would need to clear, not a vague "FHE is too slow."</div>
+      <div class="finding good"><b>Negative results were chased down to a root cause, not left as "it didn't work."</b> The flag-sum's wrong count, and the failure of self-composition to fix it, both trace to the same measured, falsifiable limit: this backend supports at most 2 sequential polyval compositions after Approach C's own distance-and-flag pipeline before <code>scale out of bounds</code>, while saturating this problem's hardest point needs roughly 10 — a ~5× gap in sequential nonlinear evaluations, not a vague "FHE is too slow."</div>
     </div>
   </div>
 </section>

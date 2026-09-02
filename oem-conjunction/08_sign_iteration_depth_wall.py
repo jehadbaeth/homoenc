@@ -2,10 +2,12 @@
 output (f(f(x)), f(f(f(x))), ...) can sharpen Approach D's flags enough to be
 a trustworthy threshold count, and if so, how much CKKS depth that costs.
 
-Plaintext check: iterating the fitted polynomial (03_fit_sign_polynomial.py)
-on the conjunction scenario's 61 candidate points correctly classifies all of
-them (matches the plaintext ground truth of 1 point below threshold) after 10
-extra compositions beyond Approach C's single evaluation.
+Plaintext check: sign was never wrong -- a single evaluation of the fitted
+polynomial (03_fit_sign_polynomial.py) already classifies all 61 candidate
+points correctly (matches the plaintext ground truth of 1 point below
+threshold). What's missing is saturation: after 10 extra compositions beyond
+that single evaluation, all 61 flags sit close enough to +-1 for their sum
+to be read as a trustworthy count.
 
 Encrypted check: on the same scenario's t=0 point (the hardest case -- true
 distance 5.432 km sits only fractionally below the 10 km threshold, so its
