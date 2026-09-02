@@ -160,8 +160,9 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   59.0000 against an ideal 59, correctly implying a count of 1 — the same true answer Approach D could not
   reach. Getting there also surfaced two operational lessons: a badly scaled comparator polynomial produces
   silently wrong answers that look like they could be right (a more dangerous failure mode than an
-  exception), and packing many points per ciphertext leaves unused padding slots sitting at CKKS's least
-  stable input, which chaotically corrupts a naive sum unless masked out explicitly. All five approaches,
+  exception), and packing many points per ciphertext means only one slot per block reliably carries the
+  correct value, so a naive whole-block sum silently corrupts the count unless masked down to that one slot
+  explicitly. All five approaches,
   the plaintext cross-check, and the real orbital data used are in this repository.
   </p>
   <p class="wide" style="max-width:70ch; font-size:13px; color:var(--ink-soft);">
@@ -330,23 +331,31 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   <code>EvalBootstrap</code> inserted whenever the remaining depth budget dropped below 8. That took 3
   bootstrap calls in total.</p>
   <p>Building this surfaced a genuine bug, not just a tuning problem: the first working version returned a
-  decrypted sum of 56.4375, not 59. Cause: 5 of every 64 slots per block are unused padding sitting at input
-  0 — the unstable fixed point of the composed sign map (its own derivative there is ~3.4) — and ordinary
-  CKKS rounding noise in those slots gets chaotically amplified over 11 self-compositions into effectively
-  random ±1 values, independently per slot. A naive whole-block average silently folds that garbage into the
-  result. We independently confirmed this by decrypting the ciphertext before and after composition: the 59
-  real-sample slots for the t=0 block held a uniform −1 (max deviation 2.4×10⁻⁸) both before and after the
-  fix, while the 5 padding slots had flipped to +1 — exactly the failure mode described. The fix is an exact
-  plaintext one-hot mask (1.0 at one representative slot per point, 0.0 elsewhere) applied before
-  <code>EvalSum</code>, so the corrupted padding slots are eliminated by an exact zero instead of averaged
-  in. We reproduced the pre-fix value independently by reverting to the naive sum against the same pipeline
-  and got 56.437499658724306 — matching to nine significant figures, not a rounded-off approximation of the
-  claim.</p>
+  decrypted sum of 56.4375, not 59. We decrypted a full 64-slot block directly, both before and after the 11
+  compositions, to find the cause, and the block turned out not to be the uniform replica of one value that
+  a naive reading of <code>EvalInnerProduct</code> as "batched inner product" would suggest: only slot 0 of
+  each block reliably holds the value that matches this point's correctly computed distance, and this was
+  true even before composition. The other 63 slots hold different, smaller-magnitude values, most likely
+  leftover partial sums from the underlying rotate-and-add reduction rather than 59 independent Lagrange
+  samples plus 5 padding zeros as the block layout might suggest. Those other slots sit close enough to zero
+  to fall in the sign polynomial's unstable region, so most of them saturate to +1 over 11 self-compositions
+  regardless of the block's true sign. We independently confirmed this by decrypting the t=0 block directly:
+  slot 0 correctly held −1 both before and after composition, but slots 28–63 of that same 64-slot block had
+  all saturated to +1 after composition. A naive whole-block average silently folds that majority into the
+  result. The fix is an exact plaintext one-hot mask (1.0 at slot 0 of each block, 0.0 elsewhere) applied
+  before <code>EvalSum</code>, so every slot except the one reliable one is eliminated by an exact zero
+  instead of averaged in. We reproduced the pre-fix value independently by reverting to the naive sum against
+  the same pipeline and got 56.437499658724306 — matching to nine significant figures, not a rounded-off
+  approximation of the claim. We do not have a proven account of why only slot 0 is reliable; treat it as an
+  observed property of this reduction, not a claim about "padding slots at an unstable fixed point."</p>
   <p><b>Result:</b> the decrypted sum of all 61 saturated flags is 58.99999988 against an ideal 59 for the
   true 1-of-61 ground truth — the same point (t=0) Approach C independently flags as below threshold. Reading
   <code>(n − sum) / 2</code> now gives 1.0000, matching the true count of 1. This is what D could not
-  deliver: one decrypted number, with zero per-point disclosure in the delivered pipeline, that is actually
-  a trustworthy count at this problem's precision.</p>
+  deliver: a decrypted sum that is actually a trustworthy count at this problem's precision. The
+  zero-per-point-disclosure design is the same as D's — the sum path never decrypts anything but the final
+  number. Note the shipped script itself is not that minimal: it also decrypts all 61 per-point flags in a
+  clearly separated diagnostic section, purely to verify saturation and cross-check against plaintext ground
+  truth for this report. A real deployment of this pattern would skip that section and decrypt only the sum.</p>
   <p>One limit worth stating plainly: 11 compositions was not a fixed constant, it was sized to this
   scenario's hardest point (a true distance of 5.432 km against a 10 km threshold). The script has no
   runtime check that saturation was actually reached — it reports the observed sum, not a pass/fail
@@ -377,7 +386,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
         <tr><td><span class="tag a">C</span> Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
         <tr><td><span class="tag good">A</span> Full argmin</td><td style="text-align:left; font-family:var(--sans);">One final minimum value</td><td style="text-align:left; font-family:var(--sans);">Only the single closest distance found — nothing about other candidate times</td><td style="text-align:left; font-family:var(--sans);">log₂(K) reduction levels — hits a real depth wall at K=4</td></tr>
         <tr><td><span class="tag good">D</span> Flag-sum</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure</td><td style="text-align:left; font-family:var(--sans);">Genuinely nothing per-point — but the sum is not a trustworthy count at this precision on TenSEAL/SEAL (see below)</td><td style="text-align:left; font-family:var(--sans);">Free on top of C — but unusable without more depth than this backend has</td></tr>
-        <tr><td><span class="tag good">E</span> Flag-sum, bootstrapped</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure in the delivered pipeline</td><td style="text-align:left; font-family:var(--sans);">Same as D, but the sum is now trustworthy (59.0000 vs. ideal 59) — on OpenFHE, from source, non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">3 bootstrap calls, ~6.6 s total under demo-grade parameters; production ring dimension untested</td></tr>
+        <tr><td><span class="tag good">E</span> Flag-sum, bootstrapped</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum in production use; the shipped script also decrypts all 61 per-point flags for verification (see caveat below)</td><td style="text-align:left; font-family:var(--sans);">Same zero-per-point-disclosure design as D, and the sum is now trustworthy (59.0000 vs. ideal 59) — on OpenFHE, from source, non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">3 bootstrap calls, ~6.6 s total under demo-grade parameters; production ring dimension untested</td></tr>
       </tbody>
     </table>
   </div>
@@ -572,7 +581,7 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
       <div class="finding good"><b>The disclosure/cost tradeoff is legible and lets a customer actually choose.</b> Full curve, thresholded flag, or full argmin map cleanly onto "how much do you trust the evaluating party," and the cost of each is now measured, not estimated — a real basis for a design conversation with a customer rather than a single fixed answer.</div>
       <div class="finding good"><b>The flag-sum mechanism (ciphertext addition being free) is a real, reusable building block.</b> Aggregating many per-point results into one decrypted number costs nothing extra in multiplicative depth. That primitive is sound; what's currently missing is a comparator sharp enough to feed it at this problem's precision, which is a depth-budget problem, not a design flaw in the aggregation itself.</div>
       <div class="finding good"><b>Negative results were chased down to a root cause, not left as "it didn't work."</b> The flag-sum's wrong count, and the failure of self-composition to fix it, both trace to the same measured, falsifiable limit: this backend supports at most 2 sequential polyval compositions after Approach C's own distance-and-flag pipeline before <code>scale out of bounds</code>, while saturating this problem's hardest point needs roughly 10 — a ~5× gap in sequential nonlinear evaluations, not a vague "FHE is too slow."</div>
-      <div class="finding good"><b>Bootstrapping genuinely fixes the exact problem that broke Approach D — independently verified, not taken on faith.</b> On a from-source OpenFHE build, the same flag-sum pipeline with <code>EvalBootstrap</code> inserted between compositions ran all 11 needed compositions and produced a decrypted sum of 58.99999988 against an ideal 59, implying a count of 1 — matching the true ground truth and the same point (t=0) Approach C flags independently. We re-ran the full script from scratch and got an exact match, and separately reproduced a padding-slot corruption bug the implementation caught (56.4375 without a one-hot mask before summing, 59.0000 with it) by decrypting the raw ciphertext slots before and after composition and reverting the fix by hand. This answers the question Approach D's negative result left open: the saturation ceiling is a property of TenSEAL/SEAL specifically, not of CKKS or FHE in general.</div>
+      <div class="finding good"><b>Bootstrapping genuinely fixes the exact problem that broke Approach D — independently verified, not taken on faith.</b> On a from-source OpenFHE build, the same flag-sum pipeline with <code>EvalBootstrap</code> inserted between compositions ran all 11 needed compositions and produced a decrypted sum of 58.99999988 against an ideal 59, implying a count of 1 — matching the true ground truth and the same point (t=0) Approach C flags independently. We re-ran the full script from scratch and got an exact match, and separately reproduced a within-block corruption bug the implementation caught (56.4375 without masking down to one slot per block before summing, 59.0000 with it) by decrypting the raw ciphertext block before and after composition and reverting the fix by hand. This answers the question Approach D's negative result left open: the saturation ceiling is a property of TenSEAL/SEAL specifically, not of CKKS or FHE in general.</div>
     </div>
   </div>
 </section>

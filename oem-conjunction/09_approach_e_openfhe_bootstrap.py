@@ -37,25 +37,32 @@ Honesty notes (read before citing this result):
     encrypted domain in a real deployment of this pattern is the single
     homomorphic sum, computed and decrypted separately below.
   - The final sum is computed via a one-hot plaintext mask (1.0 at each
-    point's representative slot, 0 elsewhere) multiplied in before EvalSum,
-    NOT a naive EvalSum over every slot divided by BLOCK. Each 64-slot block
-    packs 59 real interpolation-window samples plus 5 zero-padding slots,
-    and those padding slots start at exactly x=0, the unstable fixed point
-    of the composed sign map (derivative 3.375 there). Across 11
-    compositions that instability amplifies ordinary per-slot CKKS rounding
-    noise enough to make some padding slots diverge to the wrong sign,
-    independently per slot. This was caught by checking block uniformity
-    directly: the block for t=0s (the one genuinely-below-threshold point,
-    also the point whose scaled input starts closest to 0 and is therefore
-    itself most exposed to this instability) came back with mean 0.125 and
-    stdev 0.99 across its 64 slots instead of a uniform -1, i.e. most
-    padding slots had flipped to +1 while the 59 real-sample slots correctly
-    held -1. A naive whole-block average silently corrupts the count (an
-    earlier run of this script, with that bug, gave 56.4375 instead of 59).
-    Masking to exactly one representative slot per point before summing
-    avoids this: the plaintext zero at every other slot position kills the
-    corrupted padding-slot noise outright, regardless of how wrong the
-    ciphertext's value was there.
+    point's representative slot, index i*BLOCK, 0 elsewhere) multiplied in
+    before EvalSum, NOT a naive EvalSum over every slot divided by BLOCK.
+    Decrypting a full 64-slot block directly (before AND after the 11
+    compositions) shows it is NOT a uniform replica of one value the way a
+    textbook "replicate across the batch" inner product would be: even in
+    the pre-composition `scaled` ciphertext, only slot 0 of each block holds
+    the value that matches this point's correctly-computed distance; the
+    other 63 slots hold different, smaller-magnitude values, almost
+    certainly leftover partial sums from EvalInnerProduct's underlying
+    rotate-and-add reduction rather than 59 independent real samples plus 5
+    zero-padding slots as the packing scheme's block layout might suggest.
+    Those other slots are also close enough to zero to sit in the sign
+    polynomial's unstable region, so after 11 compositions most of them
+    saturate to +1 regardless of the block's true sign. This was caught by
+    decrypting the raw block for t=0s (the one genuinely-below-threshold
+    point) directly: slot 0 correctly held -1 (matching the true label),
+    but only slots 0-27 of the 64 held -1 after composition -- slots 28-63
+    had all saturated to +1 -- so a naive whole-block average silently
+    corrupts the count (an earlier run of this script, with that bug, gave
+    56.4375 instead of 59). Masking to exactly slot i*BLOCK per point before
+    summing avoids this: the plaintext zero at every other slot position
+    kills that corrupted majority outright, regardless of how wrong the
+    ciphertext's value was there. This is a property of how EvalInnerProduct
+    populates the block, not proven to be specifically an x=0 fixed-point
+    instability; treat the mechanism as "only slot 0 is trustworthy," not as
+    a claim about which slots are "padding."
 
 Run: python3 oem-conjunction/09_approach_e_openfhe_bootstrap.py
 """
@@ -230,23 +237,18 @@ def main():
     # --- The actual production disclosure: homomorphic sum, single decrypt. ---
     # IMPORTANT: naively EvalSum-ing the whole packed ciphertext and dividing by
     # BLOCK (treating each 64-slot block as a uniform replica of one flag) is
-    # WRONG here. The 5 unused slots per 64-wide block (59 real samples padded
-    # to 64) sit at an interpolated input of 0 before the sign polynomial, and
-    # x=0 is the *unstable* fixed point of the composed sign map: 11 chaotic
-    # compositions amplify the tiny per-slot CKKS rounding noise there into
-    # effectively random +-1 garbage in those slots, independently per slot.
-    # For most blocks this garbage is masked by the real, strongly-saturated
-    # value dominating an EvalSum-based reduction, but it was caught here by
-    # checking block uniformity directly: block 30 (t=0s, the one genuinely
-    # below-threshold point, whose scaled input starts closest to 0 and is
-    # therefore itself the most exposed to this same instability) came back
-    # with mean 0.125 and stdev 0.99 across its 64 slots instead of a uniform
-    # -1 -- i.e. roughly 3/4 of its "padding" slots had individually diverged
-    # to +1 while the 59 real-sample slots correctly held -1. Averaging over
-    # the full block silently corrupts the count. The fix: mask down to
-    # exactly one representative slot per point (index i*BLOCK) before
-    # summing, so the chaotic padding slots are multiplied by an exact
-    # plaintext 0 and contribute nothing, instead of being averaged in.
+    # WRONG here. Only slot 0 of each 64-wide block reliably holds this point's
+    # correct value; the other 63 slots hold different, smaller-magnitude
+    # values (see module docstring) that sit close enough to the sign
+    # polynomial's unstable region to mostly saturate to +1 after 11
+    # compositions, regardless of the block's true sign. This was caught by
+    # decrypting block 30 (t=0s, the one genuinely below-threshold point)
+    # directly: slot 0 held -1 as expected, but slots 28-63 of that same
+    # block had all saturated to +1. Averaging over the full block silently
+    # corrupts the count. The fix: mask down to exactly one representative
+    # slot per point (index i*BLOCK) before summing, so the other, unreliable
+    # slots are multiplied by an exact plaintext 0 and contribute nothing,
+    # instead of being averaged in.
     mask = [0.0] * num_slots
     for i in range(n_points):
         mask[i * BLOCK] = 1.0
