@@ -1,0 +1,6 @@
+# CPython 3.12 on Linux x86_64. The published wheel is tagged py3-none-any
+# but ships openfhe.cpython-312-x86_64-linux-gnu.so — it will not import on
+# 3.13/3.14 or on macOS/arm64.
+openfhe==1.5.1.0.24.4
+matplotlib
+numpy

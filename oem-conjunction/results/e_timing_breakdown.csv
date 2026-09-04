@@ -1,0 +1,7 @@
+stage,seconds,n_points,n_clusters,bootstraps,omp_threads
+context_keygen_bootstrap_setup,0.9174687049999193,63,7,0,8
+encrypt_both_oems,0.134039378000125,63,7,0,8
+distance_sq_and_scale,0.9358621600003971,63,7,0,8
+sign_poly_compositions,1.9192829599987817,63,7,3,8
+bootstraps,4.606882095999936,63,7,3,8
+masked_sum_decrypt,0.04719895300058852,63,7,0,8

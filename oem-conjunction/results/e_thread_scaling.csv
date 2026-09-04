@@ -1,0 +1,5 @@
+omp_threads,t_ctx_s,t_enc_s,t_dist_s,t_compose_s,t_bootstrap_s,t_sum_s,scenario
+1,4.615,0.206,3.105,5.826,20.568,0.2,single_event_61pts
+8,0.908,0.139,0.9,1.934,5.198,0.053,single_event_61pts
+16,0.612,0.142,1.038,2.008,5.923,0.079,single_event_61pts
+32,0.569,0.219,1.669,2.538,9.346,0.122,single_event_61pts

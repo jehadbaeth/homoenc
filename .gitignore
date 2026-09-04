@@ -1,4 +1,5 @@
 .venv/
+.venv-openfhe/
 __pycache__/
 *.pyc
 
@@ -9,3 +10,4 @@ java-stack/.gradle/
 java-stack/native/SEAL/
 
 .DS_Store
+oem-conjunction/results/e_figures/*.png

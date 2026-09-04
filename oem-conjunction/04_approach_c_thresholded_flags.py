@@ -65,6 +65,7 @@ def main():
         flag_enc = scaled.polyval(coeffs)
         flag = flag_enc.decrypt()[0]
         rows.append((t, flag))
+        print(f"  [{i+1}/{n}] t={t:+.1f}s  flag={flag:+.6f}  below={int(flag < 0)}", flush=True)
     t_eval = time.perf_counter() - t0
 
     with open("oem-conjunction/results/approach_c_flags.csv", "w", newline="") as f:
@@ -78,7 +79,7 @@ def main():
     print(f"evaluate {n} candidate times: {t_eval*1000:.1f} ms  ({t_eval/n*1000:.2f} ms/point)")
     print(f"grid points flagged below {THRESHOLD_KM} km threshold: {n_flagged} / {n}")
     min_abs_near_boundary = min(abs(f) for _, f in rows)
-    print(f"closest raw flag value got to the 0 decision boundary: {min_abs_near_boundary:.4f}"
+    print(f"closest raw flag value got to the 0 decision boundary: {min_abs_near_boundary:.6e}"
           f" (further from 0 = higher confidence in the flag)")
 
 

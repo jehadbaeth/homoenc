@@ -47,6 +47,7 @@ def main():
         d2_enc = encrypted_distance_sq(enc_a, enc_b, t)
         d2 = d2_enc.decrypt()[0]
         rows.append((t, d2))
+        print(f"  [{i+1}/{n}] t={t:+.1f}s  d={math.sqrt(max(d2, 0.0)):.4f} km", flush=True)
     t_eval = time.perf_counter() - t0
 
     best_t, best_d2 = min(rows, key=lambda r: r[1])
