@@ -23,6 +23,8 @@ def main():
         ("THREADS", "threads.svg"),
         ("ATTACK_SURFACE", "attack_surface.svg"),
         ("ATTACK_STATUS", "attack_status.svg"),
+        ("PIPELINE", "pipeline.svg"),
+        ("ALICE_BOB", "alice_bob.svg"),
     ):
         html = html.replace("[[" + key + "]]", svg(name))
     for out in OUTS:
@@ -149,6 +151,7 @@ a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--acce
     <a href="#attacks">Attack vectors</a> ·
     <a href="#pressure">Under pressure</a> ·
     <a href="#latency">Latency</a> ·
+    <a href="#production">Production</a> ·
     <a href="#findings">Findings</a> ·
     <a href="#reproduce">Reproduce</a>
   </p>
@@ -182,6 +185,22 @@ a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--acce
   <code>EvalInnerProduct</code> reliably populates — and <code>EvalSum</code> folds those
   63 values into one scalar. A naive average over the whole block silently corrupts the count;
   that bug is why the mask exists.</p>
+  <div class="curve-wrap">
+    [[PIPELINE]]
+    <p class="curve-caption">The computation the server runs. Steps 2–6 never call decrypt.
+    Step 7 is the only place plaintext exists after Alice and Bob encrypt.</p>
+  </div>
+  <h3>Alice, Bob, the server, and the key</h3>
+  <p>Cryptographers usually draw this as a <b>sequence chart</b> (sometimes “Alice and Bob
+  diagram”): vertical lifelines for parties, arrows for messages, labels for the
+  <i>form</i> of the data — plaintext, public metadata, or CKKS ciphertext. The lab scripts
+  collapse all four roles into one process. The diagram is the deployment split.</p>
+  <div class="curve-wrap">
+    [[ALICE_BOB]]
+    <p class="curve-caption">Public key and evaluation keys leave the key holder; the secret
+    key does not. Alice and Bob send only ciphertexts. The server returns one encrypted
+    scalar. The integer count exists only after the key holder decrypts.</p>
+  </div>
   <div class="callout warn">
     Parameters are <code>HEStd_NotSet</code> at ring dimension 2<sup>13</sup> — OpenFHE’s own
     bootstrapping-demo set, not 128-bit production security. A real deployment needs a much
@@ -319,6 +338,56 @@ a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--acce
     [[THREADS]]
     <p class="curve-caption">Single-event 61-point ciphertext, quiet machine. 1 thread ≈ 34 s
     end-to-end; 8 threads ≈ 9 s; 32 threads ≈ 14 s. Use physical cores, not SMT.</p>
+  </div>
+</section>
+
+<section id="production">
+  <div class="section-eyebrow">Production</div>
+  <h2>What these benchmarks imply for a real deployment</h2>
+  <p>The numbers on this page are a <b>feasibility check of the protocol</b>, not a
+  service-level target. This run used <code>HEStd_NotSet</code> and ring dimension
+  2<sup>13</sup> — OpenFHE’s own bootstrapping demo. OpenFHE will not accept that ring
+  under <code>HEStd_128_classic</code>: for the modulus chain bootstrapping needs, their
+  parameter generator asks for 2<sup>16</sup> or more often 2<sup>17</sup>
+  (the 2<sup>16</sup> setting fails the HE-standard QP bound unless the chain is
+  thinned). We did not re-run the Starlink pair at that size. The scaling below is an
+  envelope from this host’s measurements plus that ring-size jump, not a second
+  benchmark.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th></th><th>This run (measured)</th><th>128-bit sketch (not measured)</th></tr></thead>
+      <tbody>
+        <tr><td>Security</td><td>HEStd_NotSet, N = 2<sup>13</sup></td><td>HEStd_128_classic, N ≈ 2<sup>16</sup>–2<sup>17</sup></td></tr>
+        <tr><td>Wall-clock, 7 real events</td><td>8.5 s (3 bootstraps = 4.6 s)</td><td>Minutes, not seconds. Bootstrap is 10–100× in the literature at this jump; three refreshes dominate.</td></tr>
+        <tr><td>Peak RSS</td><td>4.5 GB</td><td>Tens of GB of evaluation keys at minimum. CKKS bootstrap is memory-bandwidth bound, not just bigger RAM.</td></tr>
+        <tr><td>CPU</td><td>8 of 16 physical cores (SMT made it slower)</td><td>A 16–32 core box, fat memory channels. Extra hyperthreads still will not help if the working set misses cache.</td></tr>
+        <tr><td>SIMD packing</td><td>64 candidate times / ciphertext (BLOCK=64, 4096 slots)</td><td>Larger N means more slots, so more known times per ciphertext for free — the same 8.5 s → minutes cost covers a wider public grid, not more object pairs unless you pack them.</td></tr>
+        <tr><td>Machine class</td><td>Workstation (this 5950X / 62 GB was enough)</td><td>A memory-heavy server, one live context at a time. Not a laptop, not a small VM.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Is it feasible?</h3>
+  <p><b>As a batch check on a known pair, yes — with those parameters, on that class of
+  machine, for that question.</b> “Alice and Bob already have seven candidate times; tell
+  us how many sit under 10 km” is a CDM-shaped job you can put on a queue and wait
+  minutes for. Encryption of the OEMs is cheap (130 ms here). The bill is bootstrap keys
+  in RAM and three refreshes on the critical path.</p>
+  <p><b>As live SSA over a constellation, no.</b> This protocol does not search for a CPA.
+  Query times are public inputs. It also does not scale with object count: two OEMs in,
+  one count out. Screening 10<sup>4</sup> objects all-pairs would mean that many
+  ciphertexts and that many bootstrap pipelines, not a bigger SIMD batch of the same
+  pair. Nothing measured here supports that.</p>
+  <p><b>What you would actually provision</b> for a first production-shaped replica of
+  this workload: 128-bit CKKS bootstrap in OpenFHE, ring left to the library
+  (expect 2<sup>17</sup>), on the order of 128 GB RAM so eval keys and two OEM
+  ciphertexts sit in core, 16+ physical cores, one context per job, <code>OMP_NUM_THREADS</code>
+  set to physical cores. Budget minutes per pair-window, not 8.5 seconds. Re-measure
+  before anyone quotes an SLA — the 10–100× bootstrap range is the honest uncertainty,
+  and this repo has not closed it.</p>
+  <div class="callout warn">
+    Integrity is still missing. A production host that returns a wrong count, or swaps
+    OEM B, is out of scope for CKKS. Pair this with authenticated computation or a
+    verifiable-FHE layer before it is a service.
   </div>
 </section>
 
