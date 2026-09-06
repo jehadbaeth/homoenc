@@ -17346,26 +17346,47 @@ z
   <h2>What these benchmarks imply for a real deployment</h2>
   <p>The numbers on this page are a <b>feasibility check of the protocol</b>, not a
   service-level target. This run used <code>HEStd_NotSet</code> and ring dimension
-  2<sup>13</sup> — OpenFHE’s own bootstrapping demo. OpenFHE will not accept that ring
-  under <code>HEStd_128_classic</code>: for the modulus chain bootstrapping needs, their
-  parameter generator asks for 2<sup>16</sup> or more often 2<sup>17</sup>
-  (the 2<sup>16</sup> setting fails the HE-standard QP bound unless the chain is
-  thinned). We did not re-run the Starlink pair at that size. The scaling below is an
-  envelope from this host’s measurements plus that ring-size jump, not a second
-  benchmark.</p>
+  2<sup>13</sup> — OpenFHE’s own bootstrapping demo. We then measured, on a separate
+  16&nbsp;GB machine, what <code>HEStd_128_classic</code> actually costs at this
+  workload's multiplicative depth (37, from <code>LEVEL_BUDGET=[4,4]</code> plus 15
+  levels of post-bootstrap headroom): OpenFHE's parameter generator does not accept a
+  choice of ring dimension under a security level, it derives one from the depth. For
+  depth 37 it derived exactly <b>2<sup>17</sup> = 131,072</b> (65,536 slots), confirmed by
+  direct context generation, not estimated from a range. Sweeping depth showed this is a
+  step function: depth 20 still fits in 2<sup>16</sup>; depths 25, 30, and 37 all land in
+  2<sup>17</sup>; depth 45 requires 2<sup>18</sup>. We then walked key generation at
+  2<sup>17</sup> step by step with timing: <code>KeyGen</code> 0.33 s,
+  <code>EvalMultKeyGen</code> 1.05 s, <code>EvalSumKeyGen</code> 16.48 s,
+  <code>EvalBootstrapSetup</code> 14.54 s — then <code>EvalBootstrapKeyGen</code>, the
+  step that builds the bootstrap evaluation keys, exceeded 23.9&nbsp;GB peak memory
+  footprint and was killed by the OS before completing, on a machine with 16&nbsp;GB of
+  RAM. The demo parameters' entire equivalent setup (context + both keygens + bootstrap
+  setup + bootstrap keygen) completes in 0.92 s. We did not re-run the seven-cluster
+  evaluation at 2<sup>17</sup> — it needs a machine that can actually hold the eval keys
+  in memory, which the measurement above shows must clear the 24 GB this attempt hit, and
+  probably more once the working ciphertexts are added on top.</p>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th></th><th>This run (measured)</th><th>128-bit sketch (not measured)</th></tr></thead>
+      <thead><tr><th></th><th>This run (measured)</th><th>128-bit (measured separately)</th></tr></thead>
       <tbody>
-        <tr><td>Security</td><td>HEStd_NotSet, N = 2<sup>13</sup></td><td>HEStd_128_classic, N ≈ 2<sup>16</sup>–2<sup>17</sup></td></tr>
-        <tr><td>Wall-clock, 7 real events</td><td>8.5 s (3 bootstraps = 4.6 s)</td><td>Minutes, not seconds. Bootstrap is 10–100× in the literature at this jump; three refreshes dominate.</td></tr>
-        <tr><td>Peak RSS</td><td>4.5 GB</td><td>Tens of GB of evaluation keys at minimum. CKKS bootstrap is memory-bandwidth bound, not just bigger RAM.</td></tr>
-        <tr><td>CPU</td><td>8 of 16 physical cores (SMT made it slower)</td><td>A 16–32 core box, fat memory channels. Extra hyperthreads still will not help if the working set misses cache.</td></tr>
-        <tr><td>SIMD packing</td><td>64 candidate times / ciphertext (BLOCK=64, 4096 slots)</td><td>Larger N means more slots, so more known times per ciphertext for free — the same 8.5 s → minutes cost covers a wider public grid, not more object pairs unless you pack them.</td></tr>
-        <tr><td>Machine class</td><td>Workstation (this 5950X / 62 GB was enough)</td><td>A memory-heavy server, one live context at a time. Not a laptop, not a small VM.</td></tr>
+        <tr><td>Security</td><td>HEStd_NotSet, N = 2<sup>13</sup></td><td>HEStd_128_classic, N = 2<sup>17</sup> exactly (derived by OpenFHE for depth 37, confirmed by direct context generation — not a range)</td></tr>
+        <tr><td>Context + keygen + bootstrap setup</td><td>0.92 s total (all steps)</td><td>KeyGen 0.33 s, EvalMultKeyGen 1.05 s, EvalSumKeyGen 16.48 s, EvalBootstrapSetup 14.54 s, then EvalBootstrapKeyGen exceeded 23.9 GB peak memory footprint and was killed before finishing — roughly 33 s and no completed result, vs. 0.92 s end to end at demo size.</td></tr>
+        <tr><td>Wall-clock, 7 real events</td><td>8.5 s (3 bootstraps = 4.6 s)</td><td>Not measured end to end — the run above never got past key generation. If bootstrap itself follows the same 10–100× literature range once it can run at all, expect minutes, not seconds.</td></tr>
+        <tr><td>Peak RSS</td><td>4.5 GB</td><td>&gt;23.9 GB peak memory footprint for evaluation-key generation alone, on a 16 GB machine, before completing. Tens of GB is not a sketch, it's the observed floor.</td></tr>
+        <tr><td>CPU</td><td>8 of 16 physical cores (SMT made it slower)</td><td>Not isolated in this measurement; the OOM happened before CPU became the bottleneck.</td></tr>
+        <tr><td>SIMD packing</td><td>64 candidate times / ciphertext (BLOCK=64, 4096 slots)</td><td>65,536 slots at N=2<sup>17</sup> — 16× more slots than the demo's 4,096, so more known times per ciphertext for free once a machine can hold the keys.</td></tr>
+        <tr><td>Machine class</td><td>Workstation (this 5950X / 62 GB was enough)</td><td>Confirmed insufficient: a 16 GB machine could not complete key generation. Needs a memory-heavy server with headroom well past 24 GB, one live context at a time.</td></tr>
       </tbody>
     </table>
   </div>
+  <p>What did <b>not</b> change: correctness. Precision is governed by
+  <code>ScalingModSize</code>, <code>FirstModSize</code>, and the multiplicative depth
+  budget, none of which move between the demo and production configs — only the ring
+  dimension and slot count change, which govern security margin and SIMD capacity, not
+  arithmetic precision. The 0-mismatch match against plaintext reported elsewhere on this
+  page is expected to hold at 2<sup>17</sup>. That expectation was not re-verified end to
+  end, because the run that would have verified it is the same one that hit the memory
+  wall above.</p>
   <h3>Is it feasible?</h3>
   <p><b>As a batch check on a known pair, yes — with those parameters, on that class of
   machine, for that question.</b> “Alice and Bob already have seven candidate times; tell
@@ -17405,7 +17426,7 @@ z
       <h3>What does not</h3>
       <div class="finding bad"><b>Without bootstrapping, the sum is not a count.</b> After one composition the interesting flags are 10<sup>−5</sup>. Sign is right; magnitude is useless. That is why this protocol is OpenFHE, not a shallow CKKS context.</div>
       <div class="finding warn"><b>Candidate times are a public input.</b> Whoever runs this already knows the seven approach windows. The hidden fact is which of them crossed 10 km, and by how much — the “how much” never leaves encryption at all.</div>
-      <div class="finding warn"><b>Security parameters are not production.</b> Ring 2<sup>13</sup>, <code>HEStd_NotSet</code>. Moving to a 128-bit bootstrap (typically 2<sup>16</sup>–2<sup>17</sup>) is expected to cost one to two orders of magnitude per refresh. Untested here.</div>
+      <div class="finding warn"><b>Security parameters are not production, and we hit a concrete wall trying.</b> Ring 2<sup>13</sup>, <code>HEStd_NotSet</code>. Moving to <code>HEStd_128_classic</code> at this workload's depth forces ring 2<sup>17</sup> exactly (measured, not estimated). Generating the bootstrap evaluation keys at that size exceeded 23.9 GB peak memory and was killed on a 16 GB machine before finishing — this is a partially measured result, not an untested guess. Correctness is expected to be unaffected (precision comes from the scaling/depth budget, not ring size), but the full pipeline was not re-run end to end at production size.</div>
     </div>
   </div>
 </section>

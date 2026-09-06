@@ -56,7 +56,10 @@ th{ text-align:right; background:var(--surface-alt); font-size:11px; letter-spac
 th:first-child, td:first-child{ text-align:left; font-family:var(--sans); white-space:normal; }
 tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background:var(--surface-alt); }
+table.prose td, table.prose th{ white-space:normal; }
+table.prose td:first-child{ min-width:150px; }
 .tag{ display:inline-block; font-family:var(--mono); font-size:10.5px; padding:1px 6px; border-radius:3px; letter-spacing:.03em; }
+.tag.stack{ display:block; width:fit-content; margin-bottom:5px; }
 .tag.a{ background:var(--accent-soft); color:var(--accent-ink); }
 .tag.b{ background:var(--surface-alt); color:var(--ink-soft); }
 .tag.good{ background:var(--good-soft); color:var(--good); }
@@ -77,6 +80,11 @@ tbody tr:hover{ background:var(--surface-alt); }
 .flow-step .what{ font-weight:600; margin-top:4px; font-size:14px; }
 .flow-step .cost{ font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); margin-top:6px; }
 .flow-step.once{ background:var(--surface-alt); }
+.model-pair{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--rule); border:1px solid var(--rule); margin:10px 0 20px; }
+@media (max-width:640px){ .model-pair{ grid-template-columns:1fr; } }
+.model-card{ background:var(--surface); padding:14px 16px; }
+.model-card-head{ font-family:var(--mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--accent-ink); font-weight:700; margin-bottom:6px; }
+.model-card-body{ font-size:13.5px; color:var(--ink-soft); }
 .findings{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px; }
 @media (max-width:640px){ .findings{ grid-template-columns:1fr; } }
 .findings-col h3{ margin-top:0; display:flex; align-items:center; gap:8px; }
@@ -384,9 +392,19 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   separated before the table means anything.</p>
 
   <div class="flow">
-    <div class="flow-step once"><div class="who">Data owner(s), locally</div><div class="what">Encrypt own OEM under own key. Orbit shape and raw positions never leave this step in the clear.</div><div class="cost">1 owner (Model 1) or 2 (Model 2)</div></div>
-    <div class="flow-step once"><div class="who">Infrastructure / OKAPI:Orbits</div><div class="what">Homomorphic interpolation, distance², threshold, sum — entirely on ciphertext</div><div class="cost">zero <code>.decrypt()</code> calls, ever, in any approach</div></div>
-    <div class="flow-step"><div class="who">Whoever holds the decryption key</div><div class="what"><b>Model 1:</b> the data owner decrypts — give them the fullest result the approach supports. <b>Model 2:</b> the counterparty or a neutral service decrypts — the B→C→A→D/E disclosure spectrum below governs how much they see.</div><div class="cost">only place plaintext exists after step 1</div></div>
+    <div class="flow-step once"><div class="who">Data owner(s), locally</div><div class="what">Encrypt own OEM under own key</div><div class="cost">1 owner (Model 1) or 2 (Model 2)</div></div>
+    <div class="flow-step once"><div class="who">Infrastructure / OKAPI:Orbits</div><div class="what">Interpolation, distance², threshold, sum — entirely on ciphertext</div><div class="cost">zero <code>.decrypt()</code> calls, ever</div></div>
+    <div class="flow-step"><div class="who">Then, only one of two things happens</div><div class="what">Whoever holds the decryption key decrypts — see the two models below</div><div class="cost">only place plaintext exists</div></div>
+  </div>
+  <div class="model-pair">
+    <div class="model-card">
+      <div class="model-card-head">Model 1 · data owner vs. infrastructure</div>
+      <div class="model-card-body">The data owner decrypts. Give them the fullest result the approach supports.</div>
+    </div>
+    <div class="model-card">
+      <div class="model-card-head">Model 2 · two data owners sharing a computation</div>
+      <div class="model-card-body">A counterparty or neutral service decrypts. The B→C→A→D/E disclosure spectrum below governs how much they see.</div>
+    </div>
   </div>
 
   <h3>Model 1 — the data-owning customer vs. the infrastructure operator</h3>
@@ -414,14 +432,14 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   hand the data owner and how well each approach holds up under load — covered in
   <a href="#correctness">Correctness</a> and the <a href="#multievent">multi-event test</a> below.</p>
   <div class="tbl-wrap">
-    <table>
+    <table class="prose">
       <thead><tr><th>Approach</th><th style="text-align:left;">What gets decrypted</th><th style="text-align:left;">What the receiving party learns (Model 2 — the party that isn't the data owner)</th><th style="text-align:left;">Cost</th></tr></thead>
       <tbody>
-        <tr><td><span class="tag b">B</span> Full curve</td><td style="text-align:left; font-family:var(--sans);">distance_sq(t) at every grid point</td><td style="text-align:left; font-family:var(--sans);">Complete encounter geometry — shape, closing speed, exact miss distance</td><td style="text-align:left; font-family:var(--sans);">Lowest per-point cost</td></tr>
-        <tr><td><span class="tag a">C</span> Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
-        <tr><td><span class="tag good">A</span> Full argmin</td><td style="text-align:left; font-family:var(--sans);">One final minimum value</td><td style="text-align:left; font-family:var(--sans);">Only the single closest distance found — nothing about other candidate times</td><td style="text-align:left; font-family:var(--sans);">log₂(K) reduction levels — hits a real depth wall at K=4</td></tr>
-        <tr><td><span class="tag good">D</span> Flag-sum</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure</td><td style="text-align:left; font-family:var(--sans);">Genuinely nothing per-point — but the sum is not a trustworthy count at this precision on TenSEAL/SEAL (see below)</td><td style="text-align:left; font-family:var(--sans);">Free on top of C — but unusable without more depth than this backend has</td></tr>
-        <tr><td><span class="tag good">E</span> Flag-sum, bootstrapped</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum in production use; the shipped script also decrypts all 61 per-point flags for verification (see caveat below)</td><td style="text-align:left; font-family:var(--sans);">Same zero-per-point-disclosure design as D, and the sum is now trustworthy (59.0000 vs. ideal 59) — on OpenFHE, from source, non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">3 bootstrap calls, ~6.6 s total under demo-grade parameters; production ring dimension untested</td></tr>
+        <tr><td><span class="tag b stack">B</span>Full curve</td><td style="text-align:left; font-family:var(--sans);">distance_sq(t) at every grid point</td><td style="text-align:left; font-family:var(--sans);">Complete encounter geometry — shape, closing speed, exact miss distance</td><td style="text-align:left; font-family:var(--sans);">Lowest per-point cost</td></tr>
+        <tr><td><span class="tag a stack">C</span>Thresholded flag</td><td style="text-align:left; font-family:var(--sans);">±1 flag at every grid point</td><td style="text-align:left; font-family:var(--sans);">Only "was it below threshold, roughly when" — the actual CDM question</td><td style="text-align:left; font-family:var(--sans);">+1 polyval per point</td></tr>
+        <tr><td><span class="tag good stack">A</span>Full argmin</td><td style="text-align:left; font-family:var(--sans);">One final minimum value</td><td style="text-align:left; font-family:var(--sans);">Only the single closest distance found — nothing about other candidate times</td><td style="text-align:left; font-family:var(--sans);">log₂(K) reduction levels — hits a real depth wall at K=4</td></tr>
+        <tr><td><span class="tag good stack">D</span>Flag-sum</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum, zero per-point disclosure</td><td style="text-align:left; font-family:var(--sans);">Genuinely nothing per-point — but the sum is not a trustworthy count at this precision on TenSEAL/SEAL (see below)</td><td style="text-align:left; font-family:var(--sans);">Free on top of C — but unusable without more depth than this backend has</td></tr>
+        <tr><td><span class="tag good stack">E</span>Flag-sum, bootstrapped</td><td style="text-align:left; font-family:var(--sans);">One aggregate sum in production use; the shipped script also decrypts all 61 per-point flags for verification (see caveat below)</td><td style="text-align:left; font-family:var(--sans);">Same zero-per-point-disclosure design as D, and the sum is now trustworthy (59.0000 vs. ideal 59) — on OpenFHE, from source, non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">3 bootstrap calls, ~6.6 s total under demo-grade parameters; production ring dimension untested</td></tr>
       </tbody>
     </table>
   </div>
@@ -447,16 +465,16 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   rows below — is either handled by a specific design choice already described above, or explicitly out of
   scope for this study and flagged as such rather than silently assumed away:</p>
   <div class="tbl-wrap">
-    <table>
+    <table class="prose">
       <thead><tr><th>Attack vector</th><th style="text-align:left;">Concern</th><th style="text-align:left;">Status here</th></tr></thead>
       <tbody>
-        <tr><td><span class="tag good">handled</span> Honest-but-curious infrastructure</td><td style="text-align:left; font-family:var(--sans);">Operator (or its cloud host) inspects ciphertexts, memory, or logs to learn orbital data</td><td style="text-align:left; font-family:var(--sans);">Mitigated by construction — the operator never holds a decryption key in any of the five approaches; its entire view is ciphertext, Model 1 above</td></tr>
-        <tr><td><span class="tag bad">out of scope</span> Malicious / tampering infrastructure</td><td style="text-align:left; font-family:var(--sans);">Operator returns wrong ciphertexts, corrupts the computation, or swaps in a different customer's data</td><td style="text-align:left; font-family:var(--sans);">Not addressed — CKKS gives confidentiality, not integrity. A real deployment needs authenticated computation or verifiable-computing checks on top of this</td></tr>
-        <tr><td><span class="tag good">handled</span> Over-disclosure to a non-owning receiver</td><td style="text-align:left; font-family:var(--sans);">A counterparty or third-party service, decrypting the final result, learns more of the other side's orbit than the question required</td><td style="text-align:left; font-family:var(--sans);">Addressed by the B→C→A→D/E disclosure spectrum, Model 2 above — pick the coarsest output that still answers the operational question</td></tr>
-        <tr><td><span class="tag warn">acknowledged</span> Public candidate-time leakage</td><td style="text-align:left; font-family:var(--sans);">Every query time submitted to the pipeline comes from a plaintext SGP4/TLE search before any ciphertext exists</td><td style="text-align:left; font-family:var(--sans);">Not mitigated, treated as public metadata by design, the same status this study already gives interpolation-weight sample times — see the multi-event caveat below</td></tr>
-        <tr><td><span class="tag bad">out of scope</span> Collusion between infrastructure and one data owner</td><td style="text-align:left; font-family:var(--sans);">In Model 2, the operator and one operator's key holder combine what they each see to reconstruct the other operator's orbit</td><td style="text-align:left; font-family:var(--sans);">Not addressed — would need threshold/multi-key FHE or an MPC layer, neither built nor tested here</td></tr>
-        <tr><td><span class="tag warn">disclosed</span> Non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">This study runs on <code>HEStd_NotSet</code>, reduced ring dimensions, to keep iteration fast</td><td style="text-align:left; font-family:var(--sans);">Explicitly called out throughout rather than silently assumed production-grade — see the Latency and Findings sections</td></tr>
-        <tr><td><span class="tag good">measured</span> Approximate-arithmetic misclassification</td><td style="text-align:left; font-family:var(--sans);">CKKS's inherent rounding noise flips a borderline conjunction's classification</td><td style="text-align:left; font-family:var(--sans);">Bounded, not assumed: 7.1 m worst-case error against a 10 km threshold in scenario 1; scenario 2 shows correct classification down to a ~2.5×10⁻⁵ raw flag margin — thin, and called out as such, not claimed as a security guarantee</td></tr>
+        <tr><td><span class="tag good stack">handled</span>Honest-but-curious infrastructure</td><td style="text-align:left; font-family:var(--sans);">Operator (or its cloud host) inspects ciphertexts, memory, or logs to learn orbital data</td><td style="text-align:left; font-family:var(--sans);">Mitigated by construction — the operator never holds a decryption key in any of the five approaches; its entire view is ciphertext, Model 1 above</td></tr>
+        <tr><td><span class="tag bad stack">out of scope</span>Malicious / tampering infrastructure</td><td style="text-align:left; font-family:var(--sans);">Operator returns wrong ciphertexts, corrupts the computation, or swaps in a different customer's data</td><td style="text-align:left; font-family:var(--sans);">Not addressed — CKKS gives confidentiality, not integrity. A real deployment needs authenticated computation or verifiable-computing checks on top of this</td></tr>
+        <tr><td><span class="tag good stack">handled</span>Over-disclosure to a non-owning receiver</td><td style="text-align:left; font-family:var(--sans);">A counterparty or third-party service, decrypting the final result, learns more of the other side's orbit than the question required</td><td style="text-align:left; font-family:var(--sans);">Addressed by the B→C→A→D/E disclosure spectrum, Model 2 above — pick the coarsest output that still answers the operational question</td></tr>
+        <tr><td><span class="tag warn stack">acknowledged</span>Public candidate-time leakage</td><td style="text-align:left; font-family:var(--sans);">Every query time submitted to the pipeline comes from a plaintext SGP4/TLE search before any ciphertext exists</td><td style="text-align:left; font-family:var(--sans);">Not mitigated, treated as public metadata by design, the same status this study already gives interpolation-weight sample times — see the multi-event caveat below</td></tr>
+        <tr><td><span class="tag bad stack">out of scope</span>Collusion between infrastructure and one data owner</td><td style="text-align:left; font-family:var(--sans);">In Model 2, the operator and one operator's key holder combine what they each see to reconstruct the other operator's orbit</td><td style="text-align:left; font-family:var(--sans);">Not addressed — would need threshold/multi-key FHE or an MPC layer, neither built nor tested here</td></tr>
+        <tr><td><span class="tag warn stack">disclosed</span>Non-production security parameters</td><td style="text-align:left; font-family:var(--sans);">This study runs on <code>HEStd_NotSet</code>, reduced ring dimensions, to keep iteration fast</td><td style="text-align:left; font-family:var(--sans);">Explicitly called out throughout rather than silently assumed production-grade — see the Latency and Findings sections</td></tr>
+        <tr><td><span class="tag good stack">measured</span>Approximate-arithmetic misclassification</td><td style="text-align:left; font-family:var(--sans);">CKKS's inherent rounding noise flips a borderline conjunction's classification</td><td style="text-align:left; font-family:var(--sans);">Bounded, not assumed: 7.1 m worst-case error against a 10 km threshold in scenario 1; scenario 2 shows correct classification down to a ~2.5×10⁻⁵ raw flag margin — thin, and called out as such, not claimed as a security guarantee</td></tr>
       </tbody>
     </table>
   </div>
@@ -486,16 +504,16 @@ span.note{ text-decoration:none; border-bottom:1px dotted var(--ink-soft); curso
   sharp minimum near t=0, where it dips visibly below the dashed 10 km threshold.</p>
 
   <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+    <table class="prose">
+      <thead><tr><th>Check</th><th style="text-align:left;">Result</th></tr></thead>
       <tbody>
-        <tr><td style="text-align:left; font-family:var(--sans);">Plaintext CPA (61-point grid, 10 s step)</td><td>t = 0.0 s, 29.5069 km² (5.4320 km)</td></tr>
-        <tr><td style="text-align:left; font-family:var(--sans);">Approach B, same grid point</td><td>29.5071 km² (5.4320 km)</td></tr>
-        <tr><td style="text-align:left; font-family:var(--sans);">Approach B max |distance² error|, all 61 points</td><td>31.51 km² (at t=−300 s, where distance² ≈ 4.89×10⁶ km²)</td></tr>
-        <tr><td style="text-align:left; font-family:var(--sans);">Approach B max |distance error|, all 61 points</td><td>7.1×10⁻³ km (7.1 m)</td></tr>
-        <tr><td style="text-align:left; font-family:var(--sans);">Approach C threshold decisions vs. plaintext</td><td>61 / 61 agree</td></tr>
-        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=2 (one reduction level)</td><td>4,890,373.32 km² vs. true 4,886,431.82 km² — 0.081% error (candidates at t=−300 s / +300 s, the window's far edges, not near the CPA)</td></tr>
-        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=4 (two reduction levels)</td><td>throws <code>scale out of bounds</code> partway through level 2 — see below</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Plaintext CPA (61-point grid, 10 s step)</td><td style="text-align:left;">t = 0.0 s, 29.5069 km² (5.4320 km)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B, same grid point</td><td style="text-align:left;">29.5071 km² (5.4320 km)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B max |distance² error|, all 61 points</td><td style="text-align:left;">31.51 km² (at t=−300 s, where distance² ≈ 4.89×10⁶ km²)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach B max |distance error|, all 61 points</td><td style="text-align:left;">7.1×10⁻³ km (7.1 m)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach C threshold decisions vs. plaintext</td><td style="text-align:left;">61 / 61 agree</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=2 (one reduction level)</td><td style="text-align:left;">4,890,373.32 km² vs. true 4,886,431.82 km² — 0.081% error (candidates at t=−300 s / +300 s, the window's far edges, not near the CPA)</td></tr>
+        <tr><td style="text-align:left; font-family:var(--sans);">Approach A, K=4 (two reduction levels)</td><td style="text-align:left;">throws <code>scale out of bounds</code> partway through level 2 — see below</td></tr>
       </tbody>
     </table>
   </div>
