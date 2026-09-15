@@ -103,6 +103,34 @@ python oem-conjunction/build_report_e.py                       # writes report-a
                                                                # and docs/conjunction-e.html
 ```
 
+### Kepler propagation under encryption (timing test, not yet a report)
+
+Tests whether a real two-body Kepler propagation -- not just the distance
+comparison Approach E does -- can run genuinely encrypted (private orbit
+shape and phase) using OpenFHE bootstrapping, via a multiply-only
+Newton-Raphson reciprocal instead of the ciphertext division CKKS doesn't
+have. Same setup as Approach E above (same venv, same
+`requirements-openfhe.txt`), no distro-specific steps beyond that --
+Arch/EndeavourOS x86_64 gets the same `openfhe` pip wheel as any other
+Linux x86_64 host.
+
+```bash
+export OMP_NUM_THREADS=8
+export PYTHONPATH=oem-conjunction
+
+python oem-conjunction/14_kepler_plaintext_reference.py    # exact ground truth, plain floats
+python oem-conjunction/15_fit_kepler_trig_polys.py          # offline sin/cos/sqrt polynomial fits
+python oem-conjunction/16_kepler_plain_approx_pipeline.py   # precision gate: same approx chain, zero encryption
+python oem-conjunction/17_kepler_encrypted_openfhe.py       # the actual encrypted timing test
+```
+
+Run them in that order -- 15_ writes the coefficients 16_ and 17_ both
+read, and 16_'s result is what 17_'s decrypted output should be diffed
+against. Read 17_'s module docstring before trusting its output: it
+documents exactly what's untested and why (it was authored on a machine
+with no working `openfhe` install), and what in this repo's own earlier
+findings it's trying to overturn.
+
 Inputs are the committed OEM CSVs under `oem-conjunction/data/` (real CelesTrak
 TLEs, not synthetic). The production decrypt is the masked flag-sum; per-point
 flag CSVs are diagnostics.
