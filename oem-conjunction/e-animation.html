@@ -150,13 +150,77 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
 .stage-caption{ background:var(--surface-alt); border-radius:8px; padding:12px 14px; margin:18px 0 6px; font-size:13.5px; min-height:38px; }
 .stage-caption b{ font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px; }
 
-.sub-panel{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0 6px; opacity:.3; transition:opacity .35s ease; }
-.sub-panel.live{ opacity:1; }
-@media (max-width:640px){ .sub-panel{ grid-template-columns:1fr; } }
-.sub-box{ background:var(--surface-alt); border-radius:10px; padding:12px 14px; }
-.sub-title{ font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+/* ---- per-stage visuals ---- */
+.stagevis{ margin:16px 0 6px; }
+.sv-fork{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.sv-fork[hidden]{ display:none; }
+@media (max-width:640px){ .sv-fork{ grid-template-columns:1fr; } }
+.sv-card{ background:var(--surface-alt); border-radius:10px; padding:14px 16px; min-height:120px; }
+.sv-card.plain{ border-top:3px solid var(--ink-soft); }
+.sv-card.cipher{ border-top:3px solid var(--accent); }
+.sv-card .sv-tag{ font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+.sv-card.cipher .sv-tag{ color:var(--accent); }
 
-.numline{ position:relative; height:34px; margin:0 6px; }
+.sv-solo{ background:var(--surface-alt); border-radius:10px; padding:16px 18px; }
+.sv-note{ font-family:var(--mono); font-size:11px; color:var(--good); background:var(--good-soft); border-radius:6px; padding:6px 10px; margin-bottom:14px; display:inline-block; }
+
+.sv-dotrow{ position:relative; height:44px; margin:6px 4px 8px; }
+.sv-sat{ position:absolute; top:8px; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--surface); font-weight:700; }
+.sv-sat.a{ background:var(--ink-soft); left:18%; }
+.sv-sat.b{ background:var(--accent); left:70%; }
+.sv-coord{ position:absolute; top:32px; font-family:var(--mono); font-size:10px; color:var(--ink-soft); transform:translateX(-50%); white-space:nowrap; }
+
+.sv-curve{ width:100%; height:56px; display:block; }
+.sv-curve path{ fill:none; stroke:var(--accent); stroke-width:2; }
+.sv-curve circle.sample{ fill:var(--ink-soft); }
+.sv-curve circle.query{ fill:var(--bad); }
+.sv-curve.locked circle.sample{ fill:var(--accent); }
+
+.sv-formula{ font-family:var(--mono); font-size:13px; color:var(--ink); min-height:20px; }
+.sv-formula .term{ opacity:0; }
+.sv-result{ font-family:var(--mono); font-size:16px; font-weight:700; margin-top:8px; }
+
+.sv-gate{ position:relative; height:16px; background:var(--surface); border:1px solid var(--rule); border-radius:8px; margin:14px 4px 10px; }
+.sv-gate-line{ position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--warn); left:50%; }
+.sv-gate-marker{ position:absolute; top:-3px; width:22px; height:22px; margin-left:-11px; border-radius:50%; background:var(--ink-soft); }
+.sv-verdict{ font-family:var(--mono); font-size:12.5px; font-weight:700; padding:2px 0; }
+
+.sv-shrink{ font-family:var(--mono); font-size:15px; }
+.sv-shrink .to{ color:var(--accent-ink); font-weight:700; }
+
+.sv-slots{ display:flex; gap:3px; align-items:flex-end; height:40px; margin:8px 4px 10px; }
+.sv-slot{ flex:1; background:var(--accent); border-radius:2px 2px 0 0; height:100%; transform-origin:bottom; }
+.sv-slot.zeroed{ background:var(--rule); }
+.sv-slot.kept{ background:var(--bad); }
+
+.sv-lock{ font-size:34px; display:inline-block; }
+
+@media (prefers-reduced-motion: no-preference){
+  .sv-in-l{ animation:svInL .5s ease both; }
+  .sv-in-r{ animation:svInR .5s ease both; }
+  .sv-in-l2{ animation:svInL .5s ease .12s both; }
+  .sv-in-r2{ animation:svInR .5s ease .12s both; }
+  .sv-fade{ animation:svFade .4s ease both; }
+  .sv-fade2{ animation:svFade .4s ease .2s both; }
+  .sv-fade3{ animation:svFade .4s ease .4s both; }
+  .sv-pop{ animation:svPop .45s cubic-bezier(.34,1.56,.64,1) both; }
+  .sv-draw{ stroke-dasharray:220; stroke-dashoffset:220; animation:svDraw 1.1s ease forwards; }
+  .sv-marker-slide{ animation:svMarkerSlide 1.1s ease forwards; }
+  .sv-flash{ animation:svFlash .6s ease .5s both; }
+  .sv-zero{ animation:svZero .5s ease both; }
+  .sv-lockopen{ animation:svLockOpen .6s ease .3s both; }
+}
+@keyframes svInL{ from{opacity:0; transform:translateX(-16px);} to{opacity:1; transform:none;} }
+@keyframes svInR{ from{opacity:0; transform:translateX(16px);} to{opacity:1; transform:none;} }
+@keyframes svFade{ from{opacity:0; transform:translateY(5px);} to{opacity:1; transform:none;} }
+@keyframes svPop{ 0%{opacity:0; transform:scale(.55);} 70%{opacity:1; transform:scale(1.1);} 100%{transform:scale(1);} }
+@keyframes svDraw{ to{ stroke-dashoffset:0; } }
+@keyframes svMarkerSlide{ from{ left:8%; opacity:0; } to{ opacity:1; } }
+@keyframes svFlash{ 0%{ background:var(--surface); color:var(--ink-soft); } 100%{ background:var(--bad-soft); color:var(--bad); } }
+@keyframes svZero{ from{ transform:scaleY(1); opacity:1; } to{ transform:scaleY(.12); opacity:.35; } }
+@keyframes svLockOpen{ from{ transform:rotate(0) translateY(0); } to{ transform:rotate(-16deg) translateY(-1px); } }
+
+.numline{ position:relative; height:34px; margin:20px 6px 0; }
 .numline-track{ position:absolute; left:0; right:0; top:16px; height:2px; background:var(--rule); }
 .numline-mid{ position:absolute; left:50%; top:8px; bottom:8px; width:1px; background:var(--rule); }
 .numline-cap{ position:absolute; top:22px; font-family:var(--mono); font-size:9px; color:var(--ink-soft); }
@@ -173,6 +237,7 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
 .gauge-big{ height:14px; border-radius:7px; background:var(--surface); border:1px solid var(--rule); overflow:hidden; position:relative; }
 .gauge-big > i{ position:absolute; inset:0; background:var(--accent); border-radius:6px; transition:width .5s ease; transform-origin:left; }
 .no-anim .gauge-big > i{ transition:none; }
+.no-anim .stagevis *{ animation:none !important; }
 .gauge-floor{ position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--bad); }
 .gauge-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--ink-soft); margin-top:6px; }
 .boot-flash{ font-family:var(--mono); font-size:10.5px; color:var(--good); font-weight:700; opacity:0; transition:opacity .3s ease; }
@@ -240,27 +305,14 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
 
     <div class="stage-caption" id="stage-caption"><b>stage</b><span id="stage-caption-text">&nbsp;</span></div>
 
-    <div class="sub-panel" id="sub-panel">
-      <div class="sub-box">
-        <div class="sub-title">sign polynomial &middot; composition <span id="comp-count">0</span> of 11</div>
-        <div class="numline">
-          <div class="numline-track"></div>
-          <div class="numline-mid"></div>
-          <span class="numline-cap" style="left:0%; transform:translateX(-2px);">&minus;1</span>
-          <span class="numline-cap" style="left:50%; transform:translateX(-50%);">0</span>
-          <span class="numline-cap" style="left:100%; transform:translateX(-100%);">+1</span>
-          <span class="numline-val v" id="val-v" style="left:50%;">&minus;4.8e&minus;5</span>
-          <span class="numline-val s" id="val-s" style="left:50%;">+2.5e&minus;5</span>
-          <div class="numline-dot v" id="dot-v" style="left:50%;"></div>
-          <div class="numline-dot s" id="dot-s" style="left:50%;"></div>
-        </div>
+    <div class="stagevis" id="stagevis">
+      <div class="sv-fork" id="sv-fork">
+        <div class="sv-card plain" id="sv-plain-card"><div class="sv-tag">plaintext</div><div id="sv-plain-body"></div></div>
+        <div class="sv-card cipher" id="sv-cipher-card"><div class="sv-tag">encrypted</div><div id="sv-cipher-body"></div></div>
       </div>
-      <div class="sub-box">
-        <div class="sub-title">ciphertext level budget <span class="boot-flash" id="boot-flash">&larr; bootstrapped</span></div>
-        <div class="gaugewrap">
-          <div class="gauge-big"><i id="gauge-fill" style="width:100%"></i><div class="gauge-floor" style="left:53.3%"></div></div>
-          <div class="gauge-foot"><span>0</span><span>floor = 8 (dashed)</span><span id="gauge-level">15 / 15</span></div>
-        </div>
+      <div class="sv-solo" id="sv-solo" hidden>
+        <div class="sv-note">plaintext already answered <b>VIOLATION</b> back at step 4 &mdash; it has nothing left to compute. Only the encrypted side keeps going:</div>
+        <div id="sv-solo-body"></div>
       </div>
     </div>
 
@@ -422,8 +474,13 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
 <script>
 (function(){
   // ---- ground-truth data (see chapters 1, 4, 5, 6 for sources) ----
-  var NODES = ['positions','interpolate','d²','scale','sign-poly','mask','sum','decrypt'];
-  var NODE_PCT = [3, 16.7, 30.4, 44.1, 57.8, 71.5, 85.2, 98.5];
+  // The two lanes do NOT run the same steps: plaintext has 4 steps and stops
+  // (it can branch). Ciphertext has 8, because it cannot branch and has to
+  // fake the comparison, then mask/sum/decrypt to get one number out.
+  var PLAIN_NODES = ['positions','interpolate','d²','compare'];
+  var PLAIN_PCT = [6, 35, 64, 93];
+  var CIPHER_NODES = ['positions','interpolate','d²','scale','sign-poly x11','mask','sum','decrypt'];
+  var CIPHER_PCT = [3, 16.7, 30.4, 44.1, 57.8, 71.5, 85.2, 98.5];
   var TOTAL_STAGES = 18; // 0..17
 
   // composition k=1..11: sign-value trajectories anchored on two real measurements
@@ -455,18 +512,18 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
     return (v*50)+50; // -1..1 -> 0..100
   }
 
-  // ---- build tracks ----
-  function buildTrack(id, cls){
+  // ---- build tracks (different node counts per lane, on purpose) ----
+  function buildTrack(id, cls, labels, pcts){
     var el = document.getElementById(id);
-    NODE_PCT.forEach(function(pct, i){
+    pcts.forEach(function(pct, i){
       var n = document.createElement('div');
-      n.className = 'track-node' + (i===4 ? ' wide' : '');
+      n.className = 'track-node' + (cls==='cipher' && i===4 ? ' wide' : '');
       n.style.left = pct + '%';
       el.appendChild(n);
       var t = document.createElement('div');
       t.className = 'track-tick';
       t.style.left = pct + '%';
-      t.textContent = i===4 ? 'sign-poly x11' : NODES[i];
+      t.textContent = labels[i];
       el.appendChild(t);
     });
     var token = document.createElement('div');
@@ -479,19 +536,118 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
     el.appendChild(bubble);
     return {token: token, bubble: bubble};
   }
-  var plainEls = buildTrack('track-plain', 'plain');
-  var cipherEls = buildTrack('track-cipher', 'cipher');
+  var plainEls = buildTrack('track-plain', 'plain', PLAIN_NODES, PLAIN_PCT);
+  var cipherEls = buildTrack('track-cipher', 'cipher', CIPHER_NODES, CIPHER_PCT);
 
   var stageCaptionText = document.getElementById('stage-caption-text');
-  var subPanel = document.getElementById('sub-panel');
-  var compCount = document.getElementById('comp-count');
-  var dotV = document.getElementById('dot-v'), dotS = document.getElementById('dot-s');
-  var valV = document.getElementById('val-v'), valS = document.getElementById('val-s');
-  var gaugeFill = document.getElementById('gauge-fill'), gaugeLevel = document.getElementById('gauge-level');
-  var bootFlash = document.getElementById('boot-flash');
+  var svFork = document.getElementById('sv-fork');
+  var svSolo = document.getElementById('sv-solo');
+  var svPlainBody = document.getElementById('sv-plain-body');
+  var svCipherBody = document.getElementById('sv-cipher-body');
+  var svSoloBody = document.getElementById('sv-solo-body');
   var scrub = document.getElementById('scrub');
   var stagecount = document.getElementById('stagecount');
   var btnPlay = document.getElementById('btn-play');
+
+  function animateCount(el, from, to, ms, decimals){
+    if (!el) return;
+    if (document.getElementById('spine').classList.contains('no-anim')){ el.textContent = to.toFixed(decimals); return; }
+    var start = null;
+    function tick(ts){
+      if (start===null) start = ts;
+      var p = Math.min(1, (ts-start)/ms);
+      var v = from + (to-from)*p;
+      el.textContent = v.toFixed(decimals);
+      if (p < 1) requestAnimationFrame(tick); else el.textContent = to.toFixed(decimals);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function forkBody(node){
+    if (node===0){
+      return {
+        plain: '<div class="sv-dotrow"><div class="sv-sat a sv-in-l">A</div><div class="sv-sat b sv-in-r">B</div>'
+          + '<div class="sv-coord sv-fade2" style="left:18%">(x&#8320;,y&#8320;,z&#8320;)</div>'
+          + '<div class="sv-coord sv-fade3" style="left:70%">(x&#8321;,y&#8321;,z&#8321;)</div></div>'
+          + '<div class="sv-formula sv-fade3">Both operators already have these, locally, from their own OEM.</div>',
+        cipher: '<div class="sv-dotrow"><div class="sv-sat a sv-in-l">&#128274;</div><div class="sv-sat b sv-in-r">&#128274;</div>'
+          + '<div class="sv-coord sv-fade2" style="left:18%">Enc(x&#8320;,y&#8320;,z&#8320;)</div>'
+          + '<div class="sv-coord sv-fade3" style="left:70%">Enc(x&#8321;,y&#8321;,z&#8321;)</div></div>'
+          + '<div class="sv-formula sv-fade3">Same positions &mdash; but the host only ever holds ciphertext.</div>'
+      };
+    }
+    if (node===1){
+      var svg = '<svg class="sv-curve CLS" viewBox="0 0 300 56" preserveAspectRatio="none">'
+        + '<path class="sv-draw" d="M10,42 C80,10 220,10 290,42"/>'
+        + '<circle class="sample" cx="40" cy="36" r="4"/><circle class="sample" cx="110" cy="18" r="4"/>'
+        + '<circle class="sample" cx="190" cy="18" r="4"/><circle class="sample" cx="260" cy="36" r="4"/>'
+        + '<circle class="query sv-pop" cx="150" cy="14" r="5" style="animation-delay:.9s"/></svg>';
+      return {
+        plain: svg.replace('CLS','') + '<div class="sv-formula sv-fade3">Lagrange fit through the nearby samples, evaluated at the exact query time t.</div>',
+        cipher: svg.replace('CLS','locked') + '<div class="sv-formula sv-fade3">Same fit, run homomorphically &mdash; the host never decrypts a sample to do it.</div>'
+      };
+    }
+    if (node===2){
+      return {
+        plain: '<div class="sv-formula"><span class="term sv-fade">(x&#8320;&minus;x&#8321;)&sup2;</span> <span class="term sv-fade2">+ (y&#8320;&minus;y&#8321;)&sup2;</span> <span class="term sv-fade3">+ (z&#8320;&minus;z&#8321;)&sup2;</span></div>'
+          + '<div class="sv-result sv-fade3">d&sup2; = <span id="sv-dsq-plain">0.00</span> km&sup2;</div>',
+        cipher: '<div class="sv-formula"><span class="term sv-fade">Enc(x&#8320;&minus;x&#8321;)&sup2;</span> <span class="term sv-fade2">+ Enc(y&#8320;&minus;y&#8321;)&sup2;</span> <span class="term sv-fade3">+ Enc(z&#8320;&minus;z&#8321;)&sup2;</span></div>'
+          + '<div class="sv-result sv-fade3">&#128274; d&sup2; = <span id="sv-dsq-cipher">0.00</span> (host never sees this number)</div>'
+      };
+    }
+    // node 3 — the fork itself
+    return {
+      plain: '<div class="sv-gate"><div class="sv-gate-line"></div><div class="sv-gate-marker sv-marker-slide" style="left:38%"></div></div>'
+        + '<div class="sv-verdict sv-flash">29.51 &lt; 100 &rarr; VIOLATION, done.</div>',
+      cipher: '<div class="sv-shrink sv-fade">(29.51 &minus; 100) / 5,000,000</div>'
+        + '<div class="sv-shrink sv-fade3">= <span class="to">&minus;1.41&times;10&#8315;&#8309;</span> <span style="font-size:11px; color:var(--ink-soft);">(still encrypted, still just a sign to fake)</span></div>'
+    };
+  }
+
+  function soloBody(node, compIdx){
+    if (node===4){
+      var v = compIdx>0 ? VIOL[compIdx-1] : -4.8e-5, sv2 = compIdx>0 ? SAFE[compIdx-1] : 2.5e-5;
+      var lvl = compIdx>0 ? LEVELS[compIdx-1] : 15;
+      var booted = compIdx>0 && BOOTS[compIdx-1];
+      var pv = linePos(v), ps = linePos(sv2);
+      return '<div class="sub-title">sign polynomial &middot; composition ' + Math.max(compIdx,0) + ' of 11'
+        + (booted ? ' <span style="color:var(--good); font-family:var(--mono); font-size:10px;">&larr; just bootstrapped</span>' : '') + '</div>'
+        + '<div class="numline">'
+        + '<div class="numline-track"></div><div class="numline-mid"></div>'
+        + '<span class="numline-cap" style="left:0%; transform:translateX(-2px);">&minus;1</span>'
+        + '<span class="numline-cap" style="left:50%; transform:translateX(-50%);">0</span>'
+        + '<span class="numline-cap" style="left:100%; transform:translateX(-100%);">+1</span>'
+        + '<span class="numline-val v sv-fade" style="left:' + pv + '%;">' + fmt(v) + '</span>'
+        + '<span class="numline-val s sv-fade" style="left:' + ps + '%;">' + fmt(sv2) + '</span>'
+        + '<div class="numline-dot v sv-pop" style="left:' + pv + '%;"></div>'
+        + '<div class="numline-dot s sv-pop" style="left:' + ps + '%;"></div>'
+        + '</div>'
+        + '<div class="gaugewrap" style="margin-top:16px;">'
+        + '<div class="sub-title" style="margin-bottom:6px;">ciphertext level budget</div>'
+        + '<div class="gauge-big"><i style="width:' + (lvl/15*100) + '%"></i><div class="gauge-floor" style="left:53.3%"></div></div>'
+        + '<div class="gauge-foot"><span>0</span><span>floor = 8 (dashed)</span><span>' + lvl + ' / 15</span></div>'
+        + '</div>';
+    }
+    if (node===5){
+      var bars = '';
+      var keepIdx = 6;
+      for (var i=0;i<16;i++){
+        var zeroed = i!==keepIdx;
+        bars += '<div class="sv-slot ' + (zeroed ? 'zeroed sv-zero' : 'kept sv-pop') + '" style="height:' + (zeroed?60:100) + '%; animation-delay:' + (i*0.03) + 's;"></div>';
+      }
+      return '<div class="sub-title">masking the 63 packed slots (16 shown)</div>'
+        + '<div class="sv-slots">' + bars + '</div>'
+        + '<div class="sv-formula sv-fade3">A public 0/1 mask, multiplied in: the flag survives only where the mask is 1. The one kept here is this event\'s slot.</div>';
+    }
+    if (node===6){
+      return '<div class="sub-title">EvalSum across all 63 masked slots</div>'
+        + '<div class="sv-formula sv-fade">62 safe slots &times; (+1) + 1 violation slot &times; (&minus;1), added under encryption</div>'
+        + '<div class="sv-result sv-pop" style="margin-top:10px;">sum = <span id="sv-sum-val">0.00</span></div>';
+    }
+    return '<div class="sub-title">the key holder decrypts the one result ciphertext</div>'
+      + '<div style="text-align:center; padding:8px 0;"><span class="sv-lock sv-lockopen">&#128275;</span></div>'
+      + '<div class="sv-result sv-fade3" style="text-align:center;">60.99999973799246 &rarr; k = (63 &minus; 61)/2 = <b>1</b></div>';
+  }
 
   var CAPTIONS = [
     'Both operators already have position samples near the query time, from their own OEM — nothing has left either side yet.',
@@ -504,14 +660,14 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
     'The key holder — the only party who ever touches the secret key — decrypts one number: 60.99999973799246. k=(63−61)/2=1 violation, matching plaintext ground truth, without ever learning which of the 63 times it was.'
   ];
 
-  var state = { stage: 0, playing: false, timer: null };
+  var state = { stage: 0, playing: false, timer: null, lastNode: -1 };
 
   function render(){
     var s = state.stage;
     var node = s <= 3 ? s : (s <= 14 ? 4 : (s === 15 ? 5 : (s === 16 ? 6 : 7)));
     var plainNode = Math.min(node, 3);
-    var plainPct = NODE_PCT[plainNode];
-    var cipherPct = NODE_PCT[node];
+    var plainPct = PLAIN_PCT[plainNode];
+    var cipherPct = CIPHER_PCT[node];
 
     plainEls.token.style.left = plainPct + '%';
     plainEls.bubble.style.left = plainPct + '%';
@@ -534,22 +690,27 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
 
     stageCaptionText.textContent = ' ' + CAPTIONS[Math.min(node,7)];
 
-    var live = compIdx > 0;
-    subPanel.classList.toggle('live', live);
-    compCount.textContent = compIdx;
-    if (compIdx > 0){
-      var v = VIOL[compIdx-1], sv = SAFE[compIdx-1];
-      dotV.style.left = linePos(v) + '%'; valV.style.left = linePos(v) + '%'; valV.textContent = fmt(v);
-      dotS.style.left = linePos(sv) + '%'; valS.style.left = linePos(sv) + '%'; valS.textContent = fmt(sv);
-      var lvl = LEVELS[compIdx-1];
-      gaugeFill.style.width = (lvl/15*100) + '%';
-      gaugeLevel.textContent = lvl + ' / 15';
-      bootFlash.classList.toggle('show', BOOTS[compIdx-1]);
-    } else {
-      dotV.style.left = '50%'; valV.style.left = '50%'; valV.textContent = fmt(-4.8e-5);
-      dotS.style.left = '50%'; valS.style.left = '50%'; valS.textContent = fmt(2.5e-5);
-      gaugeFill.style.width = '100%'; gaugeLevel.textContent = '15 / 15';
-      bootFlash.classList.remove('show');
+    // only rebuild the stage visuals when the node actually changed — a scrub
+    // drag that stays on the same node shouldn't restart the animation.
+    if (node !== state.lastNode){
+      state.lastNode = node;
+      if (node <= 3){
+        svFork.hidden = false; svSolo.hidden = true;
+        var bodies = forkBody(node);
+        svPlainBody.innerHTML = bodies.plain;
+        svCipherBody.innerHTML = bodies.cipher;
+        if (node===2){
+          animateCount(document.getElementById('sv-dsq-plain'), 0, 29.51, 700, 2);
+          animateCount(document.getElementById('sv-dsq-cipher'), 0, 29.51, 700, 2);
+        }
+      } else {
+        svFork.hidden = true; svSolo.hidden = false;
+        svSoloBody.innerHTML = soloBody(node, compIdx);
+        if (node===6) animateCount(document.getElementById('sv-sum-val'), 0, 61, 800, 2);
+      }
+    } else if (node === 4) {
+      // composition advances within the same node — always refresh in place
+      svSoloBody.innerHTML = soloBody(node, compIdx);
     }
 
     scrub.value = s;
