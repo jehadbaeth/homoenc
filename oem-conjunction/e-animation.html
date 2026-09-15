@@ -1,4 +1,9 @@
-<title>Approach E, animated — how the encrypted count actually gets computed</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approach E — how the encrypted count actually happens</title>
 <style>
 :root{
   --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
@@ -28,371 +33,262 @@
   --accent2:#8a5a3b; --accent2-soft:#f0e2d4;
   --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
 }
-*{box-sizing:border-box;}
-body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55; -webkit-font-smoothing:antialiased; }
-.wrap{ max-width:980px; margin:0 auto; padding:32px 24px 96px; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:820px; margin:0 auto; padding:0 24px 120px; }
+a{ color:var(--accent); }
+code{ font-family:var(--mono); font-size:12.5px; background:var(--surface-alt); padding:1px 5px; border-radius:3px; }
 .eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; }
-h1{ font-size:clamp(22px,3.4vw,30px); font-weight:700; letter-spacing:-.01em; margin:8px 0 6px; text-wrap:balance; }
-.subtitle{ color:var(--ink-soft); font-size:14.5px; max-width:70ch; margin:0 0 6px; }
-.back{ font-family:var(--mono); font-size:12px; }
-a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--accent-soft); }
-a:hover{ border-bottom-color:var(--accent); }
-code{ font-family:var(--mono); font-size:12px; background:var(--surface-alt); padding:1px 5px; border-radius:3px; }
+.topbar{ position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--rule); }
+.topbar-inner{ max-width:820px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.back{ font-family:var(--mono); font-size:12px; text-decoration:none; color:var(--ink-soft); white-space:nowrap; }
+.back:hover{ color:var(--accent); }
+.chapternav{ display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; }
+.chapternav::-webkit-scrollbar{ display:none; }
+.chapternav a{ font-family:var(--mono); font-size:11px; text-decoration:none; color:var(--ink-soft); padding:6px 9px; border-radius:5px; white-space:nowrap; }
+.chapternav a:hover{ background:var(--surface-alt); color:var(--ink); }
+.chapternav a.active{ background:var(--accent-soft); color:var(--accent-ink); font-weight:700; }
 
-.tabs{ display:flex; gap:6px; margin:24px 0 4px; border-bottom:1px solid var(--rule); }
-.tab{ font-family:var(--mono); font-size:12px; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-soft);
-  background:none; border:none; padding:10px 14px; cursor:pointer; border-bottom:2px solid transparent; }
-.tab:hover{ color:var(--ink); }
-.tab.active{ color:var(--accent-ink); border-bottom-color:var(--accent); font-weight:700; }
-.tab-hint{ font-size:12px; color:var(--ink-soft); margin:10px 0 0; }
+.hero{ padding:56px 0 28px; }
+h1{ font-size:31px; line-height:1.22; margin:10px 0 12px; letter-spacing:-.01em; }
+.dek{ font-size:16.5px; color:var(--ink-soft); max-width:60ch; }
 
-.crumb{ display:flex; align-items:center; gap:8px; margin:18px 0 0; font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
-.crumb button{ font-family:var(--mono); font-size:12px; background:none; border:none; color:var(--accent); cursor:pointer; padding:0; }
-.crumb button:hover{ text-decoration:underline; }
-.crumb .sep{ color:var(--rule); }
-.crumb .here{ color:var(--ink); font-weight:700; }
+.chapter{ padding:52px 0; border-top:1px solid var(--rule); scroll-margin-top:70px; }
+.chapter:first-of-type{ border-top:none; }
+.chapter-num{ font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:700; }
+.chapter h2{ font-size:23px; margin:6px 0 18px; letter-spacing:-.01em; }
+.chapter h3{ font-size:15px; margin:26px 0 10px; }
+p{ margin:0 0 14px; }
+.lede{ font-size:16px; }
+ul.plain{ margin:0 0 14px; padding-left:20px; }
+ul.plain li{ margin-bottom:6px; }
 
-.stage{ background:var(--surface); border:1px solid var(--rule); border-radius:6px; margin:14px 0 0; padding:10px; }
-.stage svg{ width:100%; height:auto; display:block; }
+.callout{ border-radius:8px; padding:14px 16px; margin:18px 0; font-size:14px; border:1px solid transparent; }
+.callout.good{ background:var(--good-soft); border-color:color-mix(in srgb, var(--good) 35%, transparent); color:var(--ink); }
+.callout.bad{ background:var(--bad-soft); border-color:color-mix(in srgb, var(--bad) 35%, transparent); }
+.callout.warn{ background:var(--warn-soft); border-color:color-mix(in srgb, var(--warn) 35%, transparent); }
+.callout b{ color:inherit; }
 
-.node-box{ fill:var(--surface-alt); stroke:var(--rule); stroke-width:1.5; transition:opacity .35s, stroke .35s, filter .35s; }
-.node-box.active{ stroke:var(--accent); stroke-width:2.5; filter:drop-shadow(0 0 6px var(--accent-soft)); }
-.node-box.done{ opacity:.62; }
-.node-box.pending{ opacity:.34; }
-.node-label{ font-family:var(--sans); font-weight:700; fill:var(--ink); font-size:13px; transition:opacity .35s; }
-.node-sub{ font-family:var(--mono); fill:var(--ink-soft); font-size:9.5px; transition:opacity .35s; }
-.node-label.pending, .node-sub.pending{ opacity:.4; }
-.edge-path{ fill:none; stroke:var(--rule); stroke-width:1.6; transition:stroke .35s, opacity .35s; }
-.edge-path.active{ stroke:var(--accent); stroke-width:2.2; }
-.edge-path.done{ stroke:var(--ink-soft); opacity:.7; }
-.edge-path.pending{ opacity:.3; }
-.badge{ font-family:var(--mono); font-size:10px; font-weight:700; fill:var(--accent-ink); }
-.badge-bg{ fill:var(--accent-soft); }
-.pulse{ animation:pulse 1.6s ease-in-out infinite; }
-@keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
-@media (prefers-reduced-motion: reduce){ .pulse{ animation:none; } .flow-dot{ animation:none !important; } }
-.flow-dot{ fill:var(--accent); }
+.split{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:20px 0; }
+@media (max-width:640px){ .split{ grid-template-columns:1fr; } }
+.card{ background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:16px 18px; }
+.card .tag{ font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block; margin-bottom:10px; }
+.card.plain .tag{ background:var(--surface-alt); color:var(--ink-soft); }
+.card.cipher .tag{ background:var(--accent-soft); color:var(--accent-ink); }
+.card .num{ font-family:var(--mono); font-size:13.5px; }
+.card .num .op{ color:var(--ink-soft); }
+.card ol{ margin:0; padding-left:18px; font-size:13.5px; }
+.card ol li{ margin-bottom:8px; }
 
-.caption{ margin-top:16px; }
-.step-eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
-.step-title{ font-size:17px; font-weight:700; margin:4px 0 6px; }
-.step-body{ font-size:14px; color:var(--ink-soft); max-width:72ch; margin:0; }
+table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:13.5px; }
+th,td{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--rule); }
+th{ font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; }
+td.mono, th.mono{ font-family:var(--mono); }
+tr.hi td{ background:var(--bad-soft); font-weight:700; }
+.tbl-wrap{ overflow-x:auto; }
 
-.controls{ display:flex; align-items:center; gap:14px; margin-top:18px; flex-wrap:wrap; }
-button.ctl{ font-family:var(--sans); font-size:13.5px; font-weight:600; padding:9px 16px; border-radius:5px;
-  border:1px solid var(--rule); background:var(--surface); color:var(--ink); cursor:pointer; }
-button.ctl:hover:not(:disabled){ border-color:var(--accent); color:var(--accent-ink); }
-button.ctl:disabled{ opacity:.35; cursor:default; }
-button.ctl.primary{ background:var(--accent); border-color:var(--accent); color:var(--surface); }
-button.ctl.zoom{ background:var(--accent2-soft); border-color:var(--accent2); color:var(--accent2); }
-.dots{ display:flex; gap:6px; }
-.dot{ width:8px; height:8px; border-radius:50%; background:var(--rule); cursor:pointer; border:none; padding:0; }
-.dot.active{ background:var(--accent); width:20px; border-radius:4px; }
-.spacer{ flex:1 1 auto; }
+.stepper{ position:relative; margin:22px 0 8px; padding-left:26px; border-left:2px solid var(--rule); }
+.stepitem{ position:relative; padding-bottom:22px; }
+.stepitem:last-child{ padding-bottom:0; }
+.stepitem::before{ content:""; position:absolute; left:-33px; top:2px; width:14px; height:14px; border-radius:50%; background:var(--accent); border:3px solid var(--bg); }
+.stepitem b{ display:block; font-size:13.5px; margin-bottom:3px; }
+.stepitem span{ font-size:13.5px; color:var(--ink-soft); }
+.stepitem code{ font-size:11.5px; }
 
-.legend{ margin-top:28px; padding-top:16px; border-top:1px solid var(--rule); font-size:12.5px; color:var(--ink-soft); }
+.gauge-row{ display:flex; align-items:center; gap:10px; margin:8px 0; font-family:var(--mono); font-size:12px; }
+.gauge{ flex:1; height:8px; border-radius:4px; background:var(--surface-alt); overflow:hidden; position:relative; }
+.gauge > i{ position:absolute; inset:0; background:var(--accent); border-radius:4px; }
+.glabel{ width:150px; flex-shrink:0; color:var(--ink-soft); }
+.gval{ width:34px; text-align:right; flex-shrink:0; }
+
+.keydiagram{ background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:20px; margin:18px 0; }
+.krow{ display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:12px; margin:8px 0; flex-wrap:wrap; }
+.kbox{ background:var(--surface-alt); border:1px solid var(--rule); border-radius:6px; padding:6px 10px; white-space:nowrap; }
+.kbox.holder{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); font-weight:700; }
+.karrow{ flex:1; height:1px; background:var(--rule); position:relative; min-width:24px; }
+.karrow::after{ content:"\2192"; position:absolute; right:-2px; top:-9px; color:var(--ink-soft); }
+.klabel{ font-family:var(--mono); font-size:10.5px; color:var(--ink-soft); white-space:nowrap; }
+
+.foot{ padding-top:40px; border-top:1px solid var(--rule); font-size:13px; color:var(--ink-soft); }
+.foot a{ color:var(--accent); }
+
+@media (prefers-reduced-motion: no-preference){
+  .chapter{ animation:rise .5s ease both; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
+}
 </style>
+</head>
+<body>
 
-<div class="wrap">
-  <div class="eyebrow">Approach E · animated walkthrough</div>
-  <h1>How the encrypted count actually gets computed</h1>
-  <p class="subtitle">Two levels: the overview (who sees what) and the pipeline inside the server (what actually
-  happens to the ciphertext). Step through with the controls, or zoom into the server to see the pipeline level.
-  Three drawing styles below show the same steps — pick whichever reads clearest.</p>
-  <p class="back"><a href="report-approach-e.html">← back to the Approach E report</a></p>
-
-  <div class="tabs" role="tablist">
-    <button class="tab active" data-style="schematic">Schematic</button>
-    <button class="tab" data-style="circuit">Circuit</button>
-    <button class="tab" data-style="characters">Characters</button>
-  </div>
-  <p class="tab-hint" id="tabHint"></p>
-
-  <div class="crumb" id="crumb"></div>
-
-  <div class="stage">
-    <svg id="diagram" xmlns="http://www.w3.org/2000/svg"></svg>
-  </div>
-
-  <div class="caption">
-    <div class="step-eyebrow" id="stepEyebrow"></div>
-    <div class="step-title" id="stepTitle"></div>
-    <p class="step-body" id="stepBody"></p>
-  </div>
-
-  <div class="controls">
-    <button class="ctl" id="prevBtn">← Previous</button>
-    <div class="dots" id="dots"></div>
-    <button class="ctl" id="nextBtn">Next →</button>
-    <div class="spacer"></div>
-    <button class="ctl zoom" id="zoomInBtn" hidden>Zoom in ⤵ pipeline</button>
-    <button class="ctl zoom" id="zoomOutBtn" hidden>⤴ Zoom out to overview</button>
-  </div>
-
-  <div class="legend">
-    <b>Reading the diagram:</b> a glowing outline is the current step. Dimmed boxes are steps not reached yet.
-    Faded-solid boxes are already behind you. Nothing here ever shows plaintext except the final decrypt —
-    that is the entire point of the protocol.
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back" href="conjunction-e.html">&larr; report</a>
+    <nav class="chapternav" id="chapternav">
+      <a href="#question">1 Question</a>
+      <a href="#plaintext">2 Plaintext</a>
+      <a href="#wall">3 The wall</a>
+      <a href="#polynomial">4 Polynomial</a>
+      <a href="#ciphertext">5 Ciphertext</a>
+      <a href="#bootstrap">6 Bootstrap</a>
+      <a href="#sum">7 Sum</a>
+      <a href="#decrypt">8 Decrypt</a>
+      <a href="#keys">9 Keys</a>
+    </nav>
   </div>
 </div>
 
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Approach E &middot; walkthrough</div>
+    <h1>How a count of orbital close approaches gets computed without anyone but one key holder ever seeing a position</h1>
+    <p class="dek">This traces one real run of <code>13_multi_approach_e_openfhe_bootstrap.py</code> on two live Starlink satellites, step by step, with the actual numbers it produced &mdash; not a stand&#8209;in diagram. Every number on this page comes from <a href="conjunction-e.html">the report</a> or the script's own output.</p>
+  </div>
+
+  <section class="chapter" id="question">
+    <div class="chapter-num">01</div>
+    <h2>The question two operators actually have</h2>
+    <p class="lede">STARLINK&#8209;35712 and STARLINK&#8209;3845 pass near each other seven times over a six&#8209;hour window. Each operator has their own position table (an OEM) for their own satellite. Neither wants to hand the other their raw ephemeris &mdash; that leaks the satellite's future track. What they both want is a single yes/no per encounter: <b>does the miss distance ever drop under 10&nbsp;km?</b></p>
+    <p>A plaintext SGP4 search on the real TLEs finds the seven local minima below. Each gets a &plusmn;40&nbsp;s window sampled every 10&nbsp;s (9 points), so the whole problem is <b>63 candidate times</b>, packed together into one encrypted computation.</p>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Cluster</th><th>Offset from CPA</th><th>Miss distance</th><th>Ground truth</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">0</td><td class="mono">&minus;8438.0 s</td><td class="mono">61.867 km</td><td>safe</td></tr>
+        <tr><td class="mono">1</td><td class="mono">&minus;5625.0 s</td><td class="mono">28.934 km</td><td>safe</td></tr>
+        <tr><td class="mono">2</td><td class="mono">&minus;2812.5 s</td><td class="mono">37.470 km</td><td>safe</td></tr>
+        <tr class="hi"><td class="mono">3</td><td class="mono">+0.5 s</td><td class="mono">5.432 km</td><td><b>violation</b></td></tr>
+        <tr><td class="mono">4</td><td class="mono">+2813.5 s</td><td class="mono">13.276 km</td><td>safe (3.3 km to spare)</td></tr>
+        <tr><td class="mono">5</td><td class="mono">+5626.5 s</td><td class="mono">20.363 km</td><td>safe</td></tr>
+        <tr><td class="mono">6</td><td class="mono">+8439.5 s</td><td class="mono">11.698 km</td><td>safe (1.7 km to spare)</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Two of these are the interesting ones for the rest of this page: cluster 3, the real 5.432&nbsp;km violation, and cluster 6, the closest genuine safe &mdash; only 1.698&nbsp;km outside the fence. Everything downstream has to get both of these right without ever decrypting a position to check.</p>
+  </section>
+
+  <section class="chapter" id="plaintext">
+    <div class="chapter-num">02</div>
+    <h2>What this looks like with no encryption at all</h2>
+    <p class="lede">Strip away CKKS entirely and the algorithm is ordinary orbital mechanics, four steps, done once per candidate time:</p>
+    <div class="stepper">
+      <div class="stepitem"><b>1. Sample positions near the query time.</b> <span>Each operator already has position samples around each candidate time <code>t</code> from their OEM.</span></div>
+      <div class="stepitem"><b>2. Interpolate to exactly <code>t</code>.</b> <span>The query time usually falls between samples, so both operators fit a Lagrange polynomial through their nearby samples and evaluate it at <code>t</code>, giving <code>(x&#8320;,y&#8320;,z&#8320;)</code> and <code>(x&#8321;,y&#8321;,z&#8321;)</code>.</span></div>
+      <div class="stepitem"><b>3. Compute squared distance.</b> <span><code>d&sup2; = (x&#8320;&minus;x&#8321;)&sup2; + (y&#8320;&minus;y&#8321;)&sup2; + (z&#8320;&minus;z&#8321;)&sup2;</code>. For cluster 3, the real interpolated positions give <code>d&sup2; &asymp; 29.51 km&sup2;</code> &mdash; a miss distance of 5.432&nbsp;km.</span></div>
+      <div class="stepitem"><b>4. Compare to the threshold.</b> <span><code>d&sup2; &lt; 10&sup2; = 100</code>? For cluster 3, <code>29.51 &lt; 100</code> &mdash; violation. For cluster 6, <code>11.698&sup2; &asymp; 136.84</code>, so <code>136.84 &lt; 100</code> is false &mdash; safe, but only by 36.84&nbsp;km&sup2; of margin.</span></div>
+    </div>
+    <p>On plaintext numbers, step 4 is trivial: it's an <code>if</code> statement. The entire rest of this page exists because CKKS ciphertexts cannot run that <code>if</code>.</p>
+  </section>
+
+  <section class="chapter" id="wall">
+    <div class="chapter-num">03</div>
+    <h2>Why you can't just do that on ciphertext</h2>
+    <p class="lede">CKKS gives a host exactly two operations on encrypted data: <b>add</b> and <b>multiply</b>. That's it. There is no encrypted <code>&lt;</code>, no encrypted <code>if</code>, no encrypted <code>sign()</code>. Comparison and branching both require inspecting a bit of the underlying number &mdash; the sign bit, or a bit of the difference &mdash; and CKKS ciphertexts don't expose bits. They only expose arithmetic.</p>
+    <p>So step 3 (distance&sup2;) survives unencrypted arithmetic untouched: subtract, square, add &mdash; all multiplications and additions. Step 4 (the comparison) is the wall. The fix used here is to replace "is this number negative" with "compute a function that behaves like the sign of this number, using only adds and multiplies."</p>
+  </section>
+
+  <section class="chapter" id="polynomial">
+    <div class="chapter-num">04</div>
+    <h2>Faking a comparison with a polynomial</h2>
+    <p class="lede">Before comparing, the script rescales <code>d&sup2; &minus; threshold&sup2;</code> down to a small number: <code>x = (d&sup2; &minus; 100) / 5,000,000</code>. That division isn't cosmetic &mdash; the sign polynomial below is only accurate for inputs near zero, so every distance in the batch gets compressed into that range before any comparison is attempted.</p>
+    <div class="split">
+      <div class="card plain"><span class="tag">cluster 3 &middot; violation</span>
+        <div class="num">d&sup2; = 29.51 <span class="op">&nbsp;&rarr;&nbsp;</span> (29.51 &minus; 100)/5,000,000 <span class="op">=</span> <b>&minus;1.41&times;10&#8315;&#8309;</b></div>
+      </div>
+      <div class="card plain"><span class="tag">cluster 6 &middot; near&#8209;miss safe</span>
+        <div class="num">d&sup2; = 136.84 <span class="op">&nbsp;&rarr;&nbsp;</span> (136.84 &minus; 100)/5,000,000 <span class="op">=</span> <b>+7.37&times;10&#8315;&#8310;</b></div>
+      </div>
+    </div>
+    <p>That's what "the encrypted value" actually is at this point in the pipeline: not a distance, not a flag &mdash; a tiny signed number, encrypted, whose <i>sign</i> is the only thing that matters and whose <i>magnitude</i> is still statistically indistinguishable from zero. A single tiny negative number is not a trustworthy encrypted "true." The rest of this chapter is about turning that sign into a confident &plusmn;1 without ever decrypting it to look.</p>
+    <p>The tool for that is <code>g(x) = (3x &minus; x&sup3;)/2</code>, a cubic that behaves like a soft sign function: near zero its slope is 1.5, so it amplifies small values outward, and it's flat near &plusmn;1, so once a value gets close to &plusmn;1 it stays there. Composing it with itself &mdash; feeding its own output back in &mdash; repeatedly pushes any nonzero number toward its sign, sharpening a little more each round.</p>
+    <p>On this exact pair, after the <i>first</i> composition the report's own decrypt-and-check run recorded:</p>
+    <div class="callout warn"><b>Composition 1:</b> the 5.432&nbsp;km violation reads <b>&minus;4.8&times;10&#8315;&#8309;</b>. The 11.698&nbsp;km safe reads <b>+2.5&times;10&#8315;&#8309;</b>. Both signs are already correct &mdash; but a number that small cannot be summed across 63 slots and read as a count. One stray bit of CKKS noise could flip it.</div>
+    <p>So the script composes <code>g</code> eleven times in a row (<code>TOTAL_COMPOSITIONS = 11</code>), and different events need different amounts of sharpening:</p>
+    <div class="gauge-row"><span class="glabel">61.9 km (easy safe)</span><div class="gauge"><i style="width:64%"></i></div><span class="gval">7</span></div>
+    <div class="gauge-row"><span class="glabel">11.698 km (cluster 6)</span><div class="gauge"><i style="width:100%"></i></div><span class="gval">11</span></div>
+    <div class="gauge-row"><span class="glabel">5.432 km (violation)</span><div class="gauge"><i style="width:100%"></i></div><span class="gval">11</span></div>
+    <p style="font-family:var(--mono); font-size:11px; color:var(--ink-soft); margin-top:-6px;">compositions needed before the value saturates to &plusmn;1.0000</p>
+    <p>The far-safe event (61.9&nbsp;km) is nowhere near the threshold, so its rescaled input starts relatively large and saturates by composition 7. The violation and the near-boundary safes start at magnitude ~10&#8315;&#8309; and need the full eleven compositions to become a trustworthy &plusmn;1. That's the actual reason the pipeline runs eleven rounds instead of one: the hardest cases here are barely on either side of the line.</p>
+  </section>
+
+  <section class="chapter" id="ciphertext">
+    <div class="chapter-num">05</div>
+    <h2>What a CKKS ciphertext is, concretely</h2>
+    <p class="lede">A CKKS ciphertext here is not one encrypted number. It's an encrypted <b>vector of up to 4,096 real numbers</b> (the slot count for this run's ring dimension of 2<sup>13</sup>), packed so that adding or multiplying two ciphertexts adds or multiplies every slot in parallel &mdash; one instruction, thousands of lanes. That packing is why 63 candidate times can be processed as one ciphertext instead of 63.</p>
+    <p>Two things ride along with every value:</p>
+    <ul class="plain">
+      <li><b>Scale.</b> Real numbers get encoded by multiplying by a large fixed factor and rounding to an integer before encryption, so the arithmetic underneath is exact integer math on a value that decodes back to an approximate real number. That approximation is where the 10<sup>&minus;7</sup>&#8209;ish noise on every "should be exactly &plusmn;1.0" slot comes from &mdash; it's visible in the raw per-point flags, e.g. <code>0.9999999802</code> instead of exactly <code>1.0</code>.</li>
+      <li><b>Level.</b> Every ciphertext also carries a countdown of how many more multiplications it can survive before the encoded noise grows large enough to corrupt the answer. This run starts with roughly 15 levels of budget after setup. Every <code>EvalMult</code> &mdash; including every call inside <code>g(x) = (3x&minus;x&sup3;)/2</code>, which needs two multiplications per composition &mdash; spends one level.</li>
+    </ul>
+    <p>Eleven compositions at two multiplications each is around 22 levels of demand against a ~15-level starting budget. That gap is exactly why bootstrapping exists.</p>
+  </section>
+
+  <section class="chapter" id="bootstrap">
+    <div class="chapter-num">06</div>
+    <h2>Why bootstrapping, and what it actually does</h2>
+    <p class="lede">Once a ciphertext's remaining level budget drops below 8 (the threshold this script checks before every composition), it cannot safely absorb another multiplication &mdash; the noise would overwhelm the signal and decryption would return garbage. There are only two ways out: stop computing, or refill the budget.</p>
+    <p><code>EvalBootstrap</code> refills it. Mechanically, it takes the ciphertext, homomorphically re-runs the CKKS <i>decryption formula itself</i> &mdash; as an encrypted computation, using the evaluation keys, never the secret key &mdash; and produces a new ciphertext that decrypts to (approximately) the same value but with a fresh, high level budget. It is decryption performed without ever exposing the plaintext: the host runs it, the host never sees the number. The cost is real: it's the single most expensive operation in the whole pipeline and it degrades precision a little each time, which is part of why the 11 compositions need margin, not just enough to reach &plusmn;1.</p>
+    <div class="callout good">This run bootstraps <b>3 times</b> across the 11 compositions &mdash; exactly when the remaining budget would otherwise fall under 8. Without bootstrapping, this script could not run more than about 6&ndash;7 compositions on 63 packed candidate times at these parameters, which per chapter 4 is not enough to safely classify the near-boundary cases.</div>
+  </section>
+
+  <section class="chapter" id="sum">
+    <div class="chapter-num">07</div>
+    <h2>From 63 flags to one encrypted number</h2>
+    <p class="lede">After 11 compositions every one of the 63 candidate times sits in its own SIMD slot as (approximately) <code>+1.0</code> for safe or <code>&minus;1.0</code> for violation &mdash; still fully encrypted, still packed in one ciphertext. Two things happen before this can be decrypted as a single count:</p>
+    <div class="stepper">
+      <div class="stepitem"><b>Mask.</b> <span>Each candidate time actually occupies a small block of slots (interpolation intermediates live in the other slots of the block); a plaintext one-hot mask multiplies in <code>1.0</code> at slot 0 of each block and <code>0.0</code> elsewhere, zeroing out everything that isn't a final flag. This is a plaintext&times;ciphertext multiply &mdash; the mask itself is public, only the flags are encrypted.</span></div>
+      <div class="stepitem"><b>Sum.</b> <span><code>EvalSum</code> adds every slot together, still under encryption. 62 safes contribute <code>+1</code> each and 1 violation contributes <code>&minus;1</code>: <code>62 &minus; 1 = 61</code>.</span></div>
+    </div>
+    <p>The result of this whole computation, before anyone decrypts anything, is one ciphertext holding one number: <b>61</b>, out of <b>63</b> candidate times. Nobody &mdash; not the host running the arithmetic &mdash; has learned a single position, distance, or even which of the 63 times was the violation.</p>
+  </section>
+
+  <section class="chapter" id="decrypt">
+    <div class="chapter-num">08</div>
+    <h2>Decrypting the answer</h2>
+    <p class="lede">The key holder decrypts that one ciphertext and gets <code>60.99999973799246</code> &mdash; not exactly 61, because of the scale noise described in chapter 5, but close enough to round with confidence. From there the count of violations is arithmetic, not decryption: for <code>n</code> candidate times where <code>k</code> are violations, the sum is <code>(n&minus;k) &minus; k = n &minus; 2k</code>. Solving for <code>k</code>:</p>
+    <div class="card plain" style="max-width:420px; margin:0 auto 18px;">
+      <div class="num">k = (n &minus; sum) / 2<span class="op"> = </span>(63 &minus; 61) / 2<span class="op"> = </span><b>1</b></div>
+    </div>
+    <p>One violation, out of 63 candidate times, across 7 real close approaches &mdash; matching the plaintext ground truth from chapter 1 exactly, and matching it without the key holder ever learning <i>which</i> of the 63 times it was, or by how much.</p>
+  </section>
+
+  <section class="chapter" id="keys">
+    <div class="chapter-num">09</div>
+    <h2>Who actually holds the key</h2>
+    <p class="lede">This is the part worth being blunt about, because the report draws a role diagram &mdash; operator, operator, host, key holder &mdash; and it is easy to read that as four parties each with their own key. That is not what the code does.</p>
+    <div class="callout bad"><b>What actually runs:</b> the script calls <code>cc.KeyGen()</code> exactly once. There is one keypair for the entire computation. Both satellites' position data get encrypted under the same public key. There is no "Alice's key" and "Bob's key" &mdash; there is one key holder's key, and both operators encrypt with the public half of it.</div>
+    <div class="keydiagram">
+      <div class="krow"><span class="kbox holder">Key holder</span><span class="karrow"></span><span class="kbox">Operator A</span><span class="klabel">public key + eval keys</span></div>
+      <div class="krow"><span class="kbox holder">Key holder</span><span class="karrow"></span><span class="kbox">Operator B</span><span class="klabel">the same public key + eval keys</span></div>
+      <div class="krow"><span class="kbox">Operator A</span><span class="karrow"></span><span class="kbox">Host</span><span class="klabel">ciphertext of position samples</span></div>
+      <div class="krow"><span class="kbox">Operator B</span><span class="karrow"></span><span class="kbox">Host</span><span class="klabel">ciphertext of position samples</span></div>
+      <div class="krow"><span class="kbox">Host</span><span class="karrow"></span><span class="kbox holder">Key holder</span><span class="klabel">one ciphertext: the sum</span></div>
+    </div>
+    <p><b>Where does that key come from?</b> <code>cc.KeyGen()</code> generates it from the crypto context's public parameters &mdash; ring dimension, scaling modulus, security setting &mdash; set up once at the start of the script. It isn't derived from either satellite's data; it's generated fresh, independent of the two OEM datasets it will later be used to encrypt.</p>
+    <p><b>So where do "Alice" and "Bob" get their own encryption keys?</b> They don't, in this build. Both operators are handed the same public key by whoever plays key holder, and encrypt with it. That's a deliberate property of single-key CKKS, not an oversight in the labeling: everyone who encrypts uses the same public key, and exactly one party holds the matching secret key. The two operators are distinguished only by which ciphertexts are theirs, not by which key encrypted them.</p>
+    <p><b>Can this be replaced with a scheme where each operator holds their own key?</b> Yes, in principle &mdash; that's what <b>threshold FHE</b> or <b>multi-key FHE</b> are for: schemes where decryption requires cooperation from multiple keyholders (or the ciphertext is encrypted under a joint key that no single party controls), so no single key holder can unilaterally decrypt. Generic <b>MPC</b> is another route to the same guarantee without FHE at all. The report says this plainly in its own attack-vectors table: for the "host and one operator collude to decrypt the other operator's data" scenario, the stated status is <b>"would need threshold / multi-key FHE or MPC. Neither is built here."</b> The single-key-holder trust assumption is a real, disclosed limitation of this specific build, not something this page is the first to notice.</p>
+  </section>
+
+  <div class="foot">
+    Source: <code>oem-conjunction/13_multi_approach_e_openfhe_bootstrap.py</code>, run against real CelesTrak TLEs for STARLINK&#8209;35712 / STARLINK&#8209;3845. Numbers cross-checked against <code>results/multi_approach_e_flag_sum.csv</code>, <code>results/multi_approach_e_openfhe_bootstrap_flags.csv</code>, and <a href="conjunction-e.html">the full report</a>, which also covers the demo-grade CKKS parameters (<code>HEStd_NotSet</code>, ring 2<sup>13</sup>) and the rest of the attack-vectors table this page draws from.
+  </div>
+
+</div>
+
 <script>
-const LEVELS = {
-  overview: {
-    viewBox: "0 0 900 300",
-    breadcrumb: "Overview",
-    nodes: [
-      {id:'alice',  kind:'person', x:60,  y:50,  w:150, h:76, label:'Alice', sub:'encrypts OEM A'},
-      {id:'bob',    kind:'person', x:60,  y:174, w:150, h:76, label:'Bob',   sub:'encrypts OEM B'},
-      {id:'server', kind:'server', x:360, y:96,  w:210, h:108, label:'Server', sub:'ciphertext only, always'},
-      {id:'decrypt',kind:'key',    x:710, y:112, w:150, h:76, label:'Key holder', sub:'decrypts one number'}
-    ],
-    edges: [
-      {id:'e_alice_server', from:'alice', to:'server', label:'ciphertext A'},
-      {id:'e_bob_server',   from:'bob',   to:'server', label:'ciphertext B'},
-      {id:'e_server_decrypt', from:'server', to:'decrypt', label:'encrypted result'}
-    ],
-    steps: [
-      {focus:['alice'], eyebrow:'Step 1 of 6', title:'Alice encrypts her own trajectory',
-       body:'Alice encrypts her OEM (position table) under her own key, locally. Raw positions and velocities never leave her machine in the clear.'},
-      {focus:['bob'], eyebrow:'Step 2 of 6', title:'Bob does the same with his own trajectory',
-       body:'Bob independently encrypts his OEM. Neither party needs to trust the other, or the server, with anything unencrypted.'},
-      {focus:['e_alice_server','e_bob_server'], eyebrow:'Step 3 of 6', title:'Both ciphertexts travel to the server',
-       body:'This is the only thing the server ever receives: two ciphertexts. No keys, no plaintext, no orbit shape.'},
-      {focus:['server'], eyebrow:'Step 4 of 6', title:'The server computes entirely on ciphertext', zoomable:true,
-       body:'Interpolation, distance², thresholding, sign, sum — every operation runs on encrypted data. Zero .decrypt() calls happen here, in any approach. Zoom in to see the eight stages inside.'},
-      {focus:['e_server_decrypt'], eyebrow:'Step 5 of 6', title:'One encrypted number comes back',
-       body:'Not a curve, not a distance, not per-point flags — a single encrypted count. That is the entire disclosure surface.'},
-      {focus:['decrypt'], eyebrow:'Step 6 of 6', title:'The key holder decrypts',
-       body:'Whoever holds the decryption key opens the result. This is the only moment plaintext exists anywhere after step 1 — and it never happens inside the server.'}
-    ]
-  },
-  pipeline: {
-    viewBox: "0 0 1040 260",
-    breadcrumb: "Pipeline",
-    parent: {level:'overview', step:3},
-    nodes: [
-      {id:'ctx',   kind:'stage', x:20,  y:92, w:108, h:88, label:'Context', sub:'+ keygen'},
-      {id:'enc',   kind:'stage', x:148, y:92, w:108, h:88, label:'Encrypt', sub:'both OEMs'},
-      {id:'dist',  kind:'stage', x:276, y:92, w:108, h:88, label:'Distance²', sub:'interpolate'},
-      {id:'scale', kind:'stage', x:404, y:92, w:108, h:88, label:'Scale', sub:'to threshold'},
-      {id:'sign',  kind:'stage', x:532, y:92, w:108, h:88, label:'Sign poly', sub:'composed', badge:'×11'},
-      {id:'boot',  kind:'stage', x:660, y:92, w:108, h:88, label:'Bootstrap', sub:'refresh depth', badge:'×3'},
-      {id:'sum',   kind:'stage', x:788, y:92, w:108, h:88, label:'Masked sum', sub:'one-hot mask'},
-      {id:'dec',   kind:'key',   x:916, y:92, w:104, h:88, label:'Decrypt', sub:'→ overview'}
-    ],
-    edges: [
-      {id:'e_ctx_enc',from:'ctx',to:'enc'},{id:'e_enc_dist',from:'enc',to:'dist'},
-      {id:'e_dist_scale',from:'dist',to:'scale'},{id:'e_scale_sign',from:'scale',to:'sign'},
-      {id:'e_sign_boot',from:'sign',to:'boot'},{id:'e_boot_sum',from:'boot',to:'sum'},
-      {id:'e_sum_dec',from:'sum',to:'dec'}
-    ],
-    steps: [
-      {focus:['ctx'], eyebrow:'Stage 1 of 8', title:'Context and bootstrapping keys, once per run',
-       body:'CKKS context, multiplication keys, and the bootstrap evaluation keys are generated once. This is the expensive setup the production-parameter test could not get past on a 16 GB machine.'},
-      {focus:['enc'], eyebrow:'Stage 2 of 8', title:'Both OEMs enter as ciphertext',
-       body:'Alice and Bob\'s tables are encrypted once here and never decrypted again inside the server, at any stage below.'},
-      {focus:['dist'], eyebrow:'Stage 3 of 8', title:'Interpolate, then squared distance',
-       body:'Local Lagrange interpolation recovers position at any query time; distance² is three ciphertext subtractions and three ciphertext multiplications.'},
-      {focus:['scale'], eyebrow:'Stage 4 of 8', title:'Scale into the sign polynomial\'s domain',
-       body:'distance² minus threshold², scaled by SCALE_KM2, so the fitted sign polynomial sees inputs inside the range it was built for.'},
-      {focus:['sign'], eyebrow:'Stage 5 of 8', title:'Compose the sign polynomial eleven times',
-       body:'Each composition sharpens the flag toward ±1. Eleven is not arbitrary — it is what this scenario\'s hardest point (5.432 km against a 10 km line) needs to saturate confidently.'},
-      {focus:['boot'], eyebrow:'Stage 6 of 8', title:'Bootstrap whenever depth runs low',
-       body:'Composing eleven times spends more multiplicative depth than one ciphertext holds. Three bootstraps refresh it along the way — interleaved with the compositions above, never decrypting.'},
-      {focus:['sum'], eyebrow:'Stage 7 of 8', title:'Sum with an exact plaintext mask',
-       body:'Only slot 0 of each 64-slot block holds the reliable value; the other 63 are leftover partial sums that saturate to the wrong sign. A one-hot mask zeroes them before summing — this was the real bug this project found and fixed.'},
-      {focus:['dec'], eyebrow:'Stage 8 of 8', title:'One trustworthy number: 59.0000',
-       body:'Against an ideal 59 for the true 1-of-61 ground truth. Reading (n − sum)/2 gives 1.0000 — a count that finally holds up, unlike Approach D\'s unbootstrapped sum.'}
-    ]
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#chapternav a'));
+  var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  function onScroll(){
+    var y = window.scrollY + 90;
+    var idx = 0;
+    for (var i=0;i<sections.length;i++){ if (sections[i] && sections[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('active', i===idx); });
   }
-};
-
-const state = { style:'schematic', level:'overview', step:0 };
-
-function nodeById(level, id){ return level.nodes.find(n=>n.id===id); }
-function edgeById(level, id){ return level.edges.find(e=>e.id===id); }
-
-function computeStatus(level, idx){
-  const done = new Set(), active = new Set();
-  level.steps.forEach((s,i)=>{
-    s.focus.forEach(id=>{ if(i<idx) done.add(id); if(i===idx) active.add(id); });
-  });
-  return {done, active};
-}
-
-function edgeGeometry(level, edge){
-  const a = nodeById(level, edge.from), b = nodeById(level, edge.to);
-  const ax = a.x+a.w, ay = a.y+a.h/2, bx = b.x, by = b.y+b.h/2;
-  return {ax,ay,bx,by};
-}
-
-function pathFor(style, ax,ay,bx,by){
-  if(style==='circuit'){
-    const midx = (ax+bx)/2;
-    return `M ${ax} ${ay} L ${midx} ${ay} L ${midx} ${by} L ${bx} ${by}`;
-  }
-  if(style==='characters'){
-    const midx = (ax+bx)/2;
-    const dy = (by-ay)*0.5;
-    return `M ${ax} ${ay} C ${midx} ${ay+dy}, ${midx} ${by-dy}, ${bx} ${by}`;
-  }
-  return `M ${ax} ${ay} L ${bx} ${by}`;
-}
-
-function nodeShape(style, n, cls){
-  const rx = style==='circuit' ? 3 : (style==='characters' ? n.h/2 : 8);
-  let extra = '';
-  if(style==='circuit'){
-    const ticks = [];
-    for(let i=0;i<3;i++){
-      const ty = n.y + 14 + i*((n.h-28)/2);
-      ticks.push(`<line x1="${n.x-6}" y1="${ty}" x2="${n.x}" y2="${ty}" class="edge-path ${cls}" />`);
-      ticks.push(`<line x1="${n.x+n.w}" y1="${ty}" x2="${n.x+n.w+6}" y2="${ty}" class="edge-path ${cls}" />`);
-    }
-    extra = ticks.join('');
-  }
-  if(style==='characters' && (n.kind==='person' || n.kind==='key')){
-    const cx = n.x+n.w/2, cy=n.y+n.h/2, r=Math.min(n.w,n.h)/2 - 4;
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" class="node-box ${cls}" />`;
-  }
-  return `${extra}<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="node-box ${cls}" />`;
-}
-
-function iconFor(style, n, cls){
-  const cx = n.x + 26, cy = n.y + n.h/2;
-  if(n.kind==='person'){
-    if(style==='characters'){
-      return `<circle cx="${n.x+n.w/2}" cy="${n.y+22}" r="12" fill="var(--accent)" class="${cls}" opacity="0.85"/>
-        <text x="${n.x+n.w/2}" y="${n.y+27}" text-anchor="middle" font-family="var(--sans)" font-weight="700" font-size="12" fill="var(--surface)">${n.label[0]}</text>`;
-    }
-    return `<circle cx="${cx}" cy="${n.y+24}" r="9" class="node-box ${cls}" />
-      <path d="M ${cx-11} ${n.y+46} q 11 -14 22 0" class="edge-path ${cls}" />`;
-  }
-  if(n.kind==='key'){
-    return `<circle cx="${n.x+n.w/2}" cy="${n.y+24}" r="7" class="node-box ${cls}" fill="none"/>
-      <line x1="${n.x+n.w/2}" y1="${n.y+31}" x2="${n.x+n.w/2}" y2="${n.y+44}" class="edge-path ${cls}"/>`;
-  }
-  if(n.kind==='server' && style!=='characters'){
-    return [0,1,2].map(i=>`<circle class="flow-dot ${cls}" cx="${n.x+n.w/2-16+i*16}" cy="${n.y+n.h-18}" r="3.5" style="animation:pulse 1.4s ease-in-out ${i*0.2}s infinite"/>`).join('');
-  }
-  return '';
-}
-
-function renderNode(style, level, n, status){
-  const cls = status.active.has(n.id) ? 'active' : (status.done.has(n.id) ? 'done' : 'pending');
-  let shape = nodeShape(style, n, cls);
-  let icon = iconFor(style, n, cls);
-  const labelY = (n.kind==='person'||n.kind==='key') ? n.y+n.h-18 : n.y+n.h/2-4;
-  const subY = labelY+15;
-  let badge = '';
-  if(n.badge){
-    badge = `<circle cx="${n.x+n.w-14}" cy="${n.y+14}" r="14" class="badge-bg ${cls}"/>
-      <text x="${n.x+n.w-14}" y="${n.y+18}" text-anchor="middle" class="badge ${cls}">${n.badge}</text>`;
-  }
-  return `<g>${shape}${icon}
-    <text x="${n.x+n.w/2}" y="${labelY}" text-anchor="middle" class="node-label ${cls}">${n.label}</text>
-    <text x="${n.x+n.w/2}" y="${subY}" text-anchor="middle" class="node-sub ${cls}">${n.sub||''}</text>
-    ${badge}
-  </g>`;
-}
-
-function renderEdge(style, level, e, status){
-  const {ax,ay,bx,by} = edgeGeometry(level, e);
-  const cls = status.active.has(e.id) ? 'active' : (status.done.has(e.id) ? 'done' : 'pending');
-  const d = pathFor(style, ax,ay,bx,by);
-  const markerId = 'arrow-'+cls;
-  let dot = '';
-  if(cls==='active'){
-    dot = `<circle r="4" class="flow-dot"><animateMotion dur="1.6s" repeatCount="indefinite" path="${d}"/></circle>`;
-  }
-  return `<path d="${d}" class="edge-path ${cls}" marker-end="url(#${markerId})"/>${dot}`;
-}
-
-function defs(){
-  const colors = {active:'var(--accent)', done:'var(--ink-soft)', pending:'var(--rule)'};
-  return `<defs>${Object.entries(colors).map(([k,c])=>`
-    <marker id="arrow-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="${c}"/>
-    </marker>`).join('')}</defs>`;
-}
-
-function render(){
-  const level = LEVELS[state.level];
-  const idx = state.step;
-  const status = computeStatus(level, idx);
-  const svg = document.getElementById('diagram');
-  svg.setAttribute('viewBox', level.viewBox);
-  svg.innerHTML = defs()
-    + level.edges.map(e=>renderEdge(state.style, level, e, status)).join('')
-    + level.nodes.map(n=>renderNode(state.style, level, n, status)).join('');
-
-  const step = level.steps[idx];
-  document.getElementById('stepEyebrow').textContent = step.eyebrow;
-  document.getElementById('stepTitle').textContent = step.title;
-  document.getElementById('stepBody').textContent = step.body;
-
-  document.getElementById('prevBtn').disabled = idx===0;
-  document.getElementById('nextBtn').disabled = idx===level.steps.length-1;
-
-  const dots = document.getElementById('dots');
-  dots.innerHTML = level.steps.map((s,i)=>`<button class="dot ${i===idx?'active':''}" data-i="${i}" title="${s.title}"></button>`).join('');
-  dots.querySelectorAll('.dot').forEach(d=>d.addEventListener('click', ()=>{ state.step = +d.dataset.i; render(); }));
-
-  const zoomIn = document.getElementById('zoomInBtn');
-  const zoomOut = document.getElementById('zoomOutBtn');
-  zoomIn.hidden = !step.zoomable;
-  zoomOut.hidden = !level.parent;
-
-  const crumb = document.getElementById('crumb');
-  if(state.level==='pipeline'){
-    crumb.innerHTML = `<button id="crumbOverview">Overview</button><span class="sep">›</span><span class="here">Pipeline</span>`;
-    document.getElementById('crumbOverview').addEventListener('click', zoomOut_);
-  } else {
-    crumb.innerHTML = `<span class="here">Overview</span>`;
-  }
-
-  const hints = {
-    schematic: 'Flat diagram matching the report’s own style — arrows and boxes, encrypted vs. plaintext shown by highlight state.',
-    circuit: 'Chip-and-trace styling — orthogonal wires with a moving pulse on the active edge, like a dataflow board.',
-    characters: 'Avatars for Alice and Bob, curved routes for ciphertext in flight, circular nodes for the human moments.'
-  };
-  document.getElementById('tabHint').textContent = hints[state.style];
-}
-
-function zoomIn_(){
-  const level = LEVELS[state.level];
-  const step = level.steps[state.step];
-  if(!step.zoomable) return;
-  state.level = 'pipeline';
-  state.step = 0;
-  render();
-}
-function zoomOut_(){
-  const level = LEVELS[state.level];
-  if(!level.parent) return;
-  state.level = level.parent.level;
-  state.step = level.parent.step;
-  render();
-}
-
-document.getElementById('prevBtn').addEventListener('click', ()=>{ if(state.step>0){ state.step--; render(); } });
-document.getElementById('nextBtn').addEventListener('click', ()=>{
-  const level = LEVELS[state.level];
-  if(state.step<level.steps.length-1){ state.step++; render(); }
-});
-document.getElementById('zoomInBtn').addEventListener('click', zoomIn_);
-document.getElementById('zoomOutBtn').addEventListener('click', zoomOut_);
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');
-  state.style = t.dataset.style;
-  render();
-}));
-document.addEventListener('keydown', (e)=>{
-  if(e.key==='ArrowRight') document.getElementById('nextBtn').click();
-  if(e.key==='ArrowLeft') document.getElementById('prevBtn').click();
-});
-
-render();
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
 </script>
+
+</body>
+</html>
