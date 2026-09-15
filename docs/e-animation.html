@@ -116,6 +116,76 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
   .chapter{ animation:rise .5s ease both; }
   @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
 }
+
+/* ---- spine (the actual animation) ---- */
+.spine{ background:var(--surface); border:1px solid var(--rule); border-radius:14px; padding:22px 22px 18px; margin:0 0 44px; }
+.spine-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
+.spine-head h2{ font-size:18px; margin:2px 0 0; }
+.spine-sub{ font-size:13px; color:var(--ink-soft); margin:0 0 18px; max-width:62ch; }
+
+.lane{ margin:16px 0; }
+.lane-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.lane-label .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+.lane-label.plain .dot{ background:var(--ink-soft); }
+.lane-label.cipher .dot{ background:var(--accent); }
+
+.track{ position:relative; height:58px; margin:0 4px 6px; }
+.track-line{ position:absolute; left:0; right:0; top:32px; height:2px; background:var(--rule); border-radius:1px; }
+.track-node{ position:absolute; top:26px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:var(--surface); border:2px solid var(--rule); }
+.track-node.past{ border-color:var(--ink-soft); }
+.track-node.wide{ width:26px; height:14px; border-radius:7px; margin-left:-13px; }
+.track-tick{ position:absolute; top:42px; font-family:var(--mono); font-size:9px; color:var(--ink-soft); transform:translateX(-50%); white-space:nowrap; }
+.token{ position:absolute; top:21px; width:24px; height:24px; margin-left:-12px; margin-top:-5px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:left .55s cubic-bezier(.4,0,.2,1); z-index:3; box-shadow:0 0 0 4px var(--surface); }
+.no-anim .token{ transition:none; }
+.token.plain{ background:var(--ink-soft); }
+.token.cipher{ background:var(--accent); }
+.token::after{ content:""; width:8px; height:8px; border-radius:50%; background:var(--surface); }
+.token.done{ background:var(--good); }
+.bubble{ position:absolute; top:-18px; transform:translateX(-50%); font-family:var(--mono); font-size:11.5px; white-space:nowrap; background:var(--surface-alt); border:1px solid var(--rule); border-radius:6px; padding:3px 8px; transition:left .55s cubic-bezier(.4,0,.2,1); z-index:4; }
+.no-anim .bubble{ transition:none; }
+.bubble.plain{ color:var(--ink); }
+.bubble.cipher{ color:var(--accent-ink); background:var(--accent-soft); border-color:var(--accent); }
+.badge-done{ display:inline-block; font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; background:var(--good-soft); color:var(--good); border-radius:4px; padding:1px 6px; margin-left:6px; }
+
+.stage-caption{ background:var(--surface-alt); border-radius:8px; padding:12px 14px; margin:18px 0 6px; font-size:13.5px; min-height:38px; }
+.stage-caption b{ font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px; }
+
+.sub-panel{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0 6px; opacity:.3; transition:opacity .35s ease; }
+.sub-panel.live{ opacity:1; }
+@media (max-width:640px){ .sub-panel{ grid-template-columns:1fr; } }
+.sub-box{ background:var(--surface-alt); border-radius:10px; padding:12px 14px; }
+.sub-title{ font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+
+.numline{ position:relative; height:34px; margin:0 6px; }
+.numline-track{ position:absolute; left:0; right:0; top:16px; height:2px; background:var(--rule); }
+.numline-mid{ position:absolute; left:50%; top:8px; bottom:8px; width:1px; background:var(--rule); }
+.numline-cap{ position:absolute; top:22px; font-family:var(--mono); font-size:9px; color:var(--ink-soft); }
+.numline-dot{ position:absolute; top:11px; width:12px; height:12px; margin-left:-6px; border-radius:50%; transition:left .55s cubic-bezier(.4,0,.2,1); }
+.no-anim .numline-dot{ transition:none; }
+.numline-dot.v{ background:var(--bad); }
+.numline-dot.s{ background:var(--good); }
+.numline-val{ position:absolute; top:-16px; font-family:var(--mono); font-size:10px; transform:translateX(-50%); white-space:nowrap; transition:left .55s cubic-bezier(.4,0,.2,1); }
+.no-anim .numline-val{ transition:none; }
+.numline-val.v{ color:var(--bad); }
+.numline-val.s{ color:var(--good); }
+
+.gaugewrap{ padding-top:2px; }
+.gauge-big{ height:14px; border-radius:7px; background:var(--surface); border:1px solid var(--rule); overflow:hidden; position:relative; }
+.gauge-big > i{ position:absolute; inset:0; background:var(--accent); border-radius:6px; transition:width .5s ease; transform-origin:left; }
+.no-anim .gauge-big > i{ transition:none; }
+.gauge-floor{ position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--bad); }
+.gauge-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--ink-soft); margin-top:6px; }
+.boot-flash{ font-family:var(--mono); font-size:10.5px; color:var(--good); font-weight:700; opacity:0; transition:opacity .3s ease; }
+.boot-flash.show{ opacity:1; }
+
+.controls{ display:flex; align-items:center; gap:10px; margin-top:18px; flex-wrap:wrap; }
+.ctlbtn{ font-family:var(--mono); font-size:13px; background:var(--surface-alt); border:1px solid var(--rule); color:var(--ink); border-radius:6px; padding:6px 11px; cursor:pointer; }
+.ctlbtn:hover{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+.ctlbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.scrub{ flex:1; min-width:120px; accent-color:var(--accent); }
+.stagecount{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+.jumplink{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); text-decoration:none; margin-left:auto; }
+.jumplink:hover{ color:var(--accent); }
 </style>
 </head>
 <body>
@@ -143,6 +213,65 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
     <div class="eyebrow">Approach E &middot; walkthrough</div>
     <h1>How a count of orbital close approaches gets computed without anyone but one key holder ever seeing a position</h1>
     <p class="dek">This traces one real run of <code>13_multi_approach_e_openfhe_bootstrap.py</code> on two live Starlink satellites, step by step, with the actual numbers it produced &mdash; not a stand&#8209;in diagram. Every number on this page comes from <a href="conjunction-e.html">the report</a> or the script's own output.</p>
+  </div>
+
+  <div class="spine" id="spine" aria-label="Animated walkthrough of the encrypted computation">
+    <div class="spine-head">
+      <div>
+        <div class="eyebrow">Watch it work</div>
+        <h2>One event &mdash; the 5.432&nbsp;km violation &mdash; traveling through both pipelines at once</h2>
+      </div>
+    </div>
+    <p class="spine-sub">The plaintext lane reaches its answer in four steps and stops. The encrypted lane below it cannot branch, so it grinds through eleven rounds of a sign&#8209;approximating polynomial and three bootstraps to reach the <i>same</i> answer &mdash; without anyone decrypting anything along the way. That gap is the entire reason this pipeline looks the way it does.</p>
+
+    <div class="lane">
+      <div class="lane-label plain"><span class="dot"></span>Plaintext (what an operator could compute alone, if trust weren't a problem)</div>
+      <div class="track" id="track-plain">
+        <div class="track-line"></div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label cipher"><span class="dot"></span>Encrypted (what the host actually runs, never seeing a value)</div>
+      <div class="track" id="track-cipher">
+        <div class="track-line"></div>
+      </div>
+    </div>
+
+    <div class="stage-caption" id="stage-caption"><b>stage</b><span id="stage-caption-text">&nbsp;</span></div>
+
+    <div class="sub-panel" id="sub-panel">
+      <div class="sub-box">
+        <div class="sub-title">sign polynomial &middot; composition <span id="comp-count">0</span> of 11</div>
+        <div class="numline">
+          <div class="numline-track"></div>
+          <div class="numline-mid"></div>
+          <span class="numline-cap" style="left:0%; transform:translateX(-2px);">&minus;1</span>
+          <span class="numline-cap" style="left:50%; transform:translateX(-50%);">0</span>
+          <span class="numline-cap" style="left:100%; transform:translateX(-100%);">+1</span>
+          <span class="numline-val v" id="val-v" style="left:50%;">&minus;4.8e&minus;5</span>
+          <span class="numline-val s" id="val-s" style="left:50%;">+2.5e&minus;5</span>
+          <div class="numline-dot v" id="dot-v" style="left:50%;"></div>
+          <div class="numline-dot s" id="dot-s" style="left:50%;"></div>
+        </div>
+      </div>
+      <div class="sub-box">
+        <div class="sub-title">ciphertext level budget <span class="boot-flash" id="boot-flash">&larr; bootstrapped</span></div>
+        <div class="gaugewrap">
+          <div class="gauge-big"><i id="gauge-fill" style="width:100%"></i><div class="gauge-floor" style="left:53.3%"></div></div>
+          <div class="gauge-foot"><span>0</span><span>floor = 8 (dashed)</span><span id="gauge-level">15 / 15</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ctlbtn" id="btn-prev" title="Previous stage" aria-label="Previous stage">&#9664;</button>
+      <button class="ctlbtn" id="btn-play" title="Play/pause" aria-label="Play or pause">&#10074;&#10074;</button>
+      <button class="ctlbtn" id="btn-next" title="Next stage" aria-label="Next stage">&#9654;</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="17" step="1" value="0" aria-label="Scrub through stages">
+      <span class="stagecount" id="stagecount">stage 1 / 18</span>
+      <a class="jumplink" href="#question">full explanation for every stage &darr;</a>
+    </div>
   </div>
 
   <section class="chapter" id="question">
@@ -287,6 +416,200 @@ tr.hi td{ background:var(--bad-soft); font-weight:700; }
   }
   document.addEventListener('scroll', onScroll, {passive:true});
   onScroll();
+})();
+</script>
+
+<script>
+(function(){
+  // ---- ground-truth data (see chapters 1, 4, 5, 6 for sources) ----
+  var NODES = ['positions','interpolate','d²','scale','sign-poly','mask','sum','decrypt'];
+  var NODE_PCT = [3, 16.7, 30.4, 44.1, 57.8, 71.5, 85.2, 98.5];
+  var TOTAL_STAGES = 18; // 0..17
+
+  // composition k=1..11: sign-value trajectories anchored on two real measurements
+  // (composition 1, from results/multi_approach_e_openfhe_bootstrap_flags.csv) and
+  // saturation at composition 11 (final decrypted sum implies ~±1). Geometric
+  // interpolation between those two measured points — the real per-round values come
+  // from a degree-27 polynomial per composition (sign_poly_coeffs.json), not this
+  // simplified curve, so treat this as the qualitative sharpening trajectory, not a
+  // literal trace.
+  var VIOL = [-4.8e-5,-1.2974e-4,-3.50676e-4,-9.47848e-4,-2.56195e-3,-6.92474e-3,-1.8717e-2,-5.05904e-2,-1.36742e-1,-3.69601e-1,-0.999];
+  var SAFE = [2.5e-5,7.21278e-5,2.08097e-4,6.00382e-4,1.73217e-3,4.9975e-3,1.44183e-2,4.15985e-2,1.20016e-1,3.4626e-1,0.999];
+  var LEVELS = [12,9,6,12,9,6,12,9,6,12,9]; // remaining level budget after each composition (start 15, cost 3, floor 8, refill 15)
+  var BOOTS  = [false,false,false,true,false,false,true,false,false,true,false]; // bootstrap fires *before* this composition
+  var EPS = 1e-5;
+
+  function fmt(x){
+    var s = x<0 ? '−' : '+';
+    var a = Math.abs(x);
+    if (a >= 0.99) return s + a.toFixed(3);
+    var e = a.toExponential(1).split('e');
+    var mant = e[0], exp = parseInt(e[1],10);
+    return s + mant + '×10⁻' + String(Math.abs(exp)).split('').map(function(c){
+      return {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'}[c];
+    }).join('');
+  }
+  function linePos(x){
+    var s = x<0 ? -1 : 1;
+    var v = s*Math.log10(1+Math.abs(x)/EPS)/Math.log10(1+1/EPS);
+    return (v*50)+50; // -1..1 -> 0..100
+  }
+
+  // ---- build tracks ----
+  function buildTrack(id, cls){
+    var el = document.getElementById(id);
+    NODE_PCT.forEach(function(pct, i){
+      var n = document.createElement('div');
+      n.className = 'track-node' + (i===4 ? ' wide' : '');
+      n.style.left = pct + '%';
+      el.appendChild(n);
+      var t = document.createElement('div');
+      t.className = 'track-tick';
+      t.style.left = pct + '%';
+      t.textContent = i===4 ? 'sign-poly x11' : NODES[i];
+      el.appendChild(t);
+    });
+    var token = document.createElement('div');
+    token.className = 'token ' + cls;
+    token.id = 'token-' + cls;
+    el.appendChild(token);
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble ' + cls;
+    bubble.id = 'bubble-' + cls;
+    el.appendChild(bubble);
+    return {token: token, bubble: bubble};
+  }
+  var plainEls = buildTrack('track-plain', 'plain');
+  var cipherEls = buildTrack('track-cipher', 'cipher');
+
+  var stageCaptionText = document.getElementById('stage-caption-text');
+  var subPanel = document.getElementById('sub-panel');
+  var compCount = document.getElementById('comp-count');
+  var dotV = document.getElementById('dot-v'), dotS = document.getElementById('dot-s');
+  var valV = document.getElementById('val-v'), valS = document.getElementById('val-s');
+  var gaugeFill = document.getElementById('gauge-fill'), gaugeLevel = document.getElementById('gauge-level');
+  var bootFlash = document.getElementById('boot-flash');
+  var scrub = document.getElementById('scrub');
+  var stagecount = document.getElementById('stagecount');
+  var btnPlay = document.getElementById('btn-play');
+
+  var CAPTIONS = [
+    'Both operators already have position samples near the query time, from their own OEM — nothing has left either side yet.',
+    'Each side fits a Lagrange polynomial through its own nearby samples and evaluates it at the exact query time t.',
+    'd² = (x₀−x₁)²+(y₀−y₁)²+(z₀−z₁)². For this event: d² ≈ 29.51 km² (miss distance 5.432 km).',
+    'Plaintext: 29.51 < 100 is just an if-statement — violation, done, instantly. Ciphertext: rescale to x=(d²−100)/5,000,000 = −1.41×10⁻⁵ — there is no encrypted if, so the sign has to be squeezed out with arithmetic instead.',
+    'g(x)=(3x−x³)/2, composed on itself, pushes any nonzero value toward ±1 — slowly near zero, fast once it gains ground. Watch the dot walk out to the edge over 11 rounds while the level gauge drains and refills.',
+    'A public one-hot mask (plaintext × ciphertext) zeroes every slot except the final flag for each of the 63 candidate times.',
+    'EvalSum adds all 63 masked slots under encryption: 62 safes at +1 and 1 violation at −1 → 61.',
+    'The key holder — the only party who ever touches the secret key — decrypts one number: 60.99999973799246. k=(63−61)/2=1 violation, matching plaintext ground truth, without ever learning which of the 63 times it was.'
+  ];
+
+  var state = { stage: 0, playing: false, timer: null };
+
+  function render(){
+    var s = state.stage;
+    var node = s <= 3 ? s : (s <= 14 ? 4 : (s === 15 ? 5 : (s === 16 ? 6 : 7)));
+    var plainNode = Math.min(node, 3);
+    var plainPct = NODE_PCT[plainNode];
+    var cipherPct = NODE_PCT[node];
+
+    plainEls.token.style.left = plainPct + '%';
+    plainEls.bubble.style.left = plainPct + '%';
+    cipherEls.token.style.left = cipherPct + '%';
+    cipherEls.bubble.style.left = cipherPct + '%';
+
+    plainEls.token.classList.toggle('done', s >= 3);
+    var plainLabel = s===0 ? 'positions' : s===1 ? '(x₀,y₀,z₀)' : s===2 ? 'd²=29.51' : '29.51<100 → VIOLATION';
+    plainEls.bubble.innerHTML = plainLabel + (s>=3 ? '<span class="badge-done">done</span>' : '');
+
+    var compIdx = s>=4 && s<=14 ? s-3 : 0; // 1..11 during compositions, else 0
+    var cipherLabel;
+    if (s<=2) cipherLabel = '🔒 Enc(' + ['positions','x,y,z','d²'][s] + ')';
+    else if (s===3) cipherLabel = 'x=−1.41e−5 (encrypted)';
+    else if (s<=14) cipherLabel = 'round ' + compIdx + '/11 → ' + fmt(VIOL[compIdx-1]);
+    else if (s===15) cipherLabel = 'mask applied';
+    else if (s===16) cipherLabel = 'sum=61 (encrypted)';
+    else cipherLabel = 'decrypted: k=1';
+    cipherEls.bubble.textContent = cipherLabel;
+
+    stageCaptionText.textContent = ' ' + CAPTIONS[Math.min(node,7)];
+
+    var live = compIdx > 0;
+    subPanel.classList.toggle('live', live);
+    compCount.textContent = compIdx;
+    if (compIdx > 0){
+      var v = VIOL[compIdx-1], sv = SAFE[compIdx-1];
+      dotV.style.left = linePos(v) + '%'; valV.style.left = linePos(v) + '%'; valV.textContent = fmt(v);
+      dotS.style.left = linePos(sv) + '%'; valS.style.left = linePos(sv) + '%'; valS.textContent = fmt(sv);
+      var lvl = LEVELS[compIdx-1];
+      gaugeFill.style.width = (lvl/15*100) + '%';
+      gaugeLevel.textContent = lvl + ' / 15';
+      bootFlash.classList.toggle('show', BOOTS[compIdx-1]);
+    } else {
+      dotV.style.left = '50%'; valV.style.left = '50%'; valV.textContent = fmt(-4.8e-5);
+      dotS.style.left = '50%'; valS.style.left = '50%'; valS.textContent = fmt(2.5e-5);
+      gaugeFill.style.width = '100%'; gaugeLevel.textContent = '15 / 15';
+      bootFlash.classList.remove('show');
+    }
+
+    scrub.value = s;
+    stagecount.textContent = 'stage ' + (s+1) + ' / ' + TOTAL_STAGES;
+  }
+
+  function goto(n, instant){
+    state.stage = Math.max(0, Math.min(TOTAL_STAGES-1, n));
+    if (instant){
+      document.getElementById('spine').classList.add('no-anim');
+      render();
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){ document.getElementById('spine').classList.remove('no-anim'); });
+      });
+    } else {
+      render();
+    }
+  }
+
+  function stopTimer(){ if (state.timer){ clearTimeout(state.timer); state.timer = null; } }
+  function scheduleNext(){
+    stopTimer();
+    var dur = (state.stage>=4 && state.stage<14) ? 750 : (state.stage===TOTAL_STAGES-1 ? 2600 : 1000);
+    state.timer = setTimeout(function(){
+      if (!state.playing) return;
+      if (state.stage >= TOTAL_STAGES-1) goto(0); else goto(state.stage+1);
+      scheduleNext();
+    }, dur);
+  }
+  function setPlaying(p){
+    state.playing = p;
+    btnPlay.innerHTML = p ? '&#10074;&#10074;' : '&#9654;';
+    btnPlay.setAttribute('aria-label', p ? 'Pause' : 'Play');
+    if (p) scheduleNext(); else stopTimer();
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', function(){ setPlaying(false); goto(state.stage-1); });
+  document.getElementById('btn-next').addEventListener('click', function(){ setPlaying(false); goto(state.stage+1); });
+  btnPlay.addEventListener('click', function(){ setPlaying(!state.playing); });
+  scrub.addEventListener('input', function(){ setPlaying(false); goto(parseInt(scrub.value,10)); });
+  document.getElementById('spine').addEventListener('keydown', function(e){
+    if (e.key==='ArrowRight'){ setPlaying(false); goto(state.stage+1); }
+    if (e.key==='ArrowLeft'){ setPlaying(false); goto(state.stage-1); }
+    if (e.key===' '){ e.preventDefault(); setPlaying(!state.playing); }
+  });
+  document.getElementById('spine').setAttribute('tabindex','0');
+
+  // frame-addressable state for verification/screenshots: ?step=N (0-17) jumps
+  // instantly and stays paused there — no reliance on animation timing.
+  var params = new URLSearchParams(window.location.search);
+  var stepParam = params.get('step');
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (stepParam !== null && !isNaN(parseInt(stepParam,10))){
+    goto(parseInt(stepParam,10), true);
+    setPlaying(false);
+  } else {
+    goto(0, true);
+    setPlaying(!reduceMotion);
+  }
 })();
 </script>
 
