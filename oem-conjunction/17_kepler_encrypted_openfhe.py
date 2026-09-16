@@ -71,21 +71,36 @@ SCOPE, STATED PLAINLY (not swept under the rug):
     09_/13_ use. That pattern is new in this repo and UNVERIFIED -- see
     the honesty note below.
 
-HONEST STATUS OF THIS FILE: openfhe is not installed in the environment
-that wrote this script (no OpenFHE wheel for this Python/platform
-combination here -- see README.md's Setup section). This script has
-never been run. It is built strictly from the primitives and parameter
-conventions already proven out in openfhe_e.py, 09_/13_
-approach_e_openfhe_bootstrap.py (EvalPoly, EvalMult/EvalAdd/EvalSub,
-EvalBootstrap, GetLevel, the demo bootstrap context), but the specific
-combination used here -- three independently-leveled ciphertexts kept in
-sync by joint bootstrapping, rather than one -- has no precedent in this
-repo and could hit an OpenFHE-level-mismatch error those scripts never
-had to handle. If EvalMult between two of these ciphertexts throws over a
-level mismatch, force them level-equal first (bootstrap all three
-together before the offending operation, not just the deepest one).
+STATUS: this has now been run, on a from-source OpenFHE build already
+present in this repo's .venv (macOS/arm64 -- the pip wheel doesn't cover
+that platform, see README.md's Setup section; the bigger Linux machine
+this was written for should just use the documented pip wheel instead).
 
-Run (Python 3.12, openfhe installed -- see README.md's Approach E setup):
+Result at KEPLER_NR_ITERS=2, demo parameters (ring 2^13, depth 37):
+context+keygen 836 ms, 5 query times in 3.86 s total (~0.77 s/query),
+ZERO bootstraps needed -- the whole 2-iteration solve plus perifocal
+reconstruction never used more than ~10 of the 37 available levels, well
+inside a single bootstrap segment. Decrypted px/py matched
+16_kepler_plain_approx_pipeline.py's plain-float output to all 6 printed
+decimal digits at every query time -- CKKS noise added nothing detectable
+on top of the ~0.8 m approximation floor 16_ already measured. Full
+numbers: oem-conjunction/results/kepler_encrypted_timing.json.
+
+What this does and doesn't verify: it confirms the core claim -- an
+iterative Kepler solve runs under CKKS end to end, decrypts to the right
+answer, using only a multiply-only reciprocal and never a division op or
+a mid-loop decrypt, closing the specific wall Key Finding 1 in
+notes/FHE-HEIR/SGP4 FHE Prototype Findings.md described. It does NOT
+verify the bootstrap-triggering path: depth never ran low enough to
+call EvalBootstrap even once, so the joint-resync-of-three-ciphertexts
+logic (bootstrap_all inside kepler_solve_encrypted) never actually ran.
+That remains unverified -- it would need more NR iterations, added ECI
+rotation and J2 terms, or production security parameters (which force a
+much larger ring and floor, see report-approach-e.html's own measurement
+of that wall) to actually exercise it.
+
+Run (Python 3.12 on Linux via the pip wheel, or this repo's .venv on
+macOS/arm64 via the from-source build):
     python3 oem-conjunction/17_kepler_encrypted_openfhe.py
 """
 import json
