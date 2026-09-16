@@ -349,11 +349,15 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
 
 <script>
 (function(){
-  var NODES = ['encrypt','NR round 1','NR round 2','reconstruct','decrypt'];
+  // Same 5 operations in both lanes, but "encrypt"/"decrypt" only ever
+  // happen in the cipher lane -- the plain-float twin never encrypts
+  // anything, so it gets its own, accurate labels for those two nodes.
+  var PLAIN_NODES = ['load a,e','NR round 1','NR round 2','reconstruct','result'];
+  var CIPHER_NODES = ['encrypt','NR round 1','NR round 2','reconstruct','decrypt'];
   var PCT = [5, 27, 50, 73, 95];
   var TOTAL_STAGES = 5;
 
-  function buildTrack(id, cls){
+  function buildTrack(id, cls, labels){
     var el = document.getElementById(id);
     PCT.forEach(function(pct, i){
       var n = document.createElement('div');
@@ -363,7 +367,7 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
       var t = document.createElement('div');
       t.className = 'track-tick';
       t.style.left = pct + '%';
-      t.textContent = NODES[i];
+      t.textContent = labels[i];
       el.appendChild(t);
     });
     var token = document.createElement('div');
@@ -374,8 +378,8 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
     el.appendChild(bubble);
     return {token: token, bubble: bubble};
   }
-  var plainEls = buildTrack('track-plain', 'plain');
-  var cipherEls = buildTrack('track-cipher', 'cipher');
+  var plainEls = buildTrack('track-plain', 'plain', PLAIN_NODES);
+  var cipherEls = buildTrack('track-cipher', 'cipher', CIPHER_NODES);
 
   var stageCaptionText = document.getElementById('stage-caption-text');
   var svPlainBody = document.getElementById('sv-plain-body');
@@ -460,9 +464,10 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
     plainEls.token.classList.toggle('done', s>=4);
     cipherEls.token.classList.toggle('done', s>=4);
 
-    var labels = ['encrypt','NR 1','NR 2','reconstruct','px=6820.30'];
-    plainEls.bubble.innerHTML = labels[s] + (s>=4 ? '<span class="badge-done">done</span>' : '');
-    cipherEls.bubble.innerHTML = labels[s] + (s>=4 ? '<span class="badge-done">done</span>' : '');
+    var plainLabels = ['load a,e','NR 1','NR 2','reconstruct','px=6820.30'];
+    var cipherLabels = ['encrypt','NR 1','NR 2','reconstruct','decrypted'];
+    plainEls.bubble.innerHTML = plainLabels[s] + (s>=4 ? '<span class="badge-done">done</span>' : '');
+    cipherEls.bubble.innerHTML = cipherLabels[s] + (s>=4 ? '<span class="badge-done">done</span>' : '');
 
     stageCaptionText.textContent = ' ' + CAPTIONS[s];
 

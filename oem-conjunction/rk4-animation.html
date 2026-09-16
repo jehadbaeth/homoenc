@@ -320,7 +320,7 @@ tr.hi td{ background:var(--warn-soft); font-weight:700; }
   // Plain lane checkpoints per step (6 nodes). Cipher lane shows step 2's
   // full k1..k4+combine grind (10 nodes). Same asymmetric-length pattern
   // e-animation.html uses for plaintext vs. ciphertext.
-  var PLAIN_NODES = ['encrypt','step 1','step 2','step 3','step 4','decrypt'];
+  var PLAIN_NODES = ['load state','step 1','step 2','step 3','step 4','result'];
   var PLAIN_PCT   = [4, 22, 40, 58, 76, 96];
   var CIPHER_NODES = ['encrypt','step 1','k1','k2','k3','k4','combine','step 3','step 4','decrypt'];
   var CIPHER_PCT   = [3, 13, 26, 35, 44, 53, 62, 78, 89, 97];
