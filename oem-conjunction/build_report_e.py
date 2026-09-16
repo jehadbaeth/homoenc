@@ -156,6 +156,15 @@ a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--acce
     <a href="#findings">Findings</a> ·
     <a href="#reproduce">Reproduce</a>
   </p>
+  <div class="callout">
+  <b>This protocol never propagates a position</b> — it assumes both operators' ephemerides
+  already exist and only compares them. A follow-on set of experiments tests whether the
+  propagation step itself can also run encrypted, starting from private orbital elements
+  instead of a pre-existing position table:
+  <a href="kepler-animation.html">Kepler's equation, closed-form (animated)</a> ·
+  <a href="rk4-animation.html">RK4, general numerical integration (animated)</a> ·
+  <a href="benchmarks.html">benchmarks comparing all three pipelines</a>.
+  </div>
 </section>
 
 <div class="panel">
@@ -453,6 +462,11 @@ a{ color:var(--accent); text-decoration:none; border-bottom:1px solid var(--acce
   and the <a href="https://jehadbaeth.github.io/homoenc/">SGP4/CKKS feasibility study</a>.
   Approach E only. Real STARLINK-35712 × STARLINK-3845 OEMs, OpenFHE 1.5.1, measured on
   Llama-Desktop (Ryzen 9 5950X, Linux, 62 GB) with <code>OMP_NUM_THREADS=8</code>.
+  <br><br>
+  Animated walkthroughs: <a href="e-animation.html">distance comparison (this report)</a> ·
+  <a href="kepler-animation.html">Kepler propagation</a> ·
+  <a href="rk4-animation.html">RK4 propagation</a> ·
+  <a href="benchmarks.html">benchmarks across all three</a>.
 </footer>
 </div>
 """
