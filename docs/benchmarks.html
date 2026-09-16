@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encrypted computation benchmarks</title>
+<style>
+:root{
+  --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
+  --rule:#c7d1cd; --accent:#2f6f7a; --accent-soft:#d9e8ea; --accent-ink:#0f3339;
+  --accent2:#8a5a3b; --accent2-soft:#f0e2d4;
+  --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
+  --mono: "SF Mono","IBM Plex Mono","JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: -apple-system, "Neue Haas Grotesk Text Pro", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d1214; --surface:#141b1e; --surface-alt:#1b2528; --ink:#e7edee; --ink-soft:#9fb0b4;
+    --rule:#2a3538; --accent:#5fb8c4; --accent-soft:#17313a; --accent-ink:#bfe9ee;
+    --accent2:#d29a6e; --accent2-soft:#3a2a1c;
+    --good:#6fce93; --good-soft:#173226; --bad:#e5896e; --bad-soft:#33201b; --warn:#e0b15a; --warn-soft:#332612;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1214; --surface:#141b1e; --surface-alt:#1b2528; --ink:#e7edee; --ink-soft:#9fb0b4;
+  --rule:#2a3538; --accent:#5fb8c4; --accent-soft:#17313a; --accent-ink:#bfe9ee;
+  --accent2:#d29a6e; --accent2-soft:#3a2a1c;
+  --good:#6fce93; --good-soft:#173226; --bad:#e5896e; --bad-soft:#33201b; --warn:#e0b15a; --warn-soft:#332612;
+}
+:root[data-theme="light"]{
+  --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
+  --rule:#c7d1cd; --accent:#2f6f7a; --accent-soft:#d9e8ea; --accent-ink:#0f3339;
+  --accent2:#8a5a3b; --accent2-soft:#f0e2d4;
+  --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:820px; margin:0 auto; padding:0 24px 120px; }
+a{ color:var(--accent); }
+code{ font-family:var(--mono); font-size:12.5px; background:var(--surface-alt); padding:1px 5px; border-radius:3px; }
+.eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+.topbar{ position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--rule); }
+.topbar-inner{ max-width:820px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.back{ font-family:var(--mono); font-size:12px; text-decoration:none; color:var(--ink-soft); white-space:nowrap; }
+.back:hover{ color:var(--accent); }
+.navlinks{ display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; margin-left:auto; }
+.navlinks a{ font-family:var(--mono); font-size:11px; text-decoration:none; color:var(--ink-soft); padding:6px 9px; border-radius:5px; white-space:nowrap; border:1px solid transparent; }
+.navlinks a:hover{ background:var(--surface-alt); color:var(--ink); }
+
+.hero{ padding:56px 0 28px; }
+h1{ font-size:31px; line-height:1.22; margin:10px 0 12px; letter-spacing:-.01em; }
+.dek{ font-size:16.5px; color:var(--ink-soft); max-width:64ch; }
+
+.section{ padding:44px 0; border-top:1px solid var(--rule); }
+.section:first-of-type{ border-top:none; }
+h2{ font-size:21px; margin:0 0 14px; letter-spacing:-.01em; }
+h3{ font-size:14.5px; margin:22px 0 8px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; font-family:var(--mono); }
+p{ margin:0 0 14px; }
+.lede{ font-size:16px; }
+
+.callout{ border-radius:8px; padding:14px 16px; margin:18px 0; font-size:14px; border:1px solid transparent; }
+.callout.good{ background:var(--good-soft); border-color:color-mix(in srgb, var(--good) 35%, transparent); color:var(--ink); }
+.callout.warn{ background:var(--warn-soft); border-color:color-mix(in srgb, var(--warn) 35%, transparent); }
+
+.cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:22px 0; }
+@media (max-width:700px){ .cards{ grid-template-columns:1fr; } }
+.pcard{ background:var(--surface); border:1px solid var(--rule); border-radius:12px; padding:20px; text-decoration:none; color:inherit; display:block; transition:border-color .15s ease, transform .15s ease; }
+.pcard:hover{ border-color:var(--accent); transform:translateY(-2px); }
+.pcard .ptag{ font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+.pcard h4{ margin:0 0 8px; font-size:15.5px; }
+.pcard p{ font-size:13px; color:var(--ink-soft); margin:0; }
+
+table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:13px; }
+th,td{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--rule); }
+th{ font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; }
+td.mono, th.mono{ font-family:var(--mono); }
+.tbl-wrap{ overflow-x:auto; }
+
+.foot{ padding-top:40px; border-top:1px solid var(--rule); font-size:13px; color:var(--ink-soft); }
+.foot a{ color:var(--accent); }
+
+/* ---- chart (scoped tokens per the dataviz method) ---- */
+.viz-root{
+  color-scheme:light;
+  --v-surface: var(--surface);
+  --v-text-primary: var(--ink);
+  --v-text-secondary: var(--ink-soft);
+  --v-text-muted:#898781;
+  --v-grid:#e1e0d9;
+  --v-baseline: var(--rule);
+  --v-s1:#2a78d6; /* Approach E */
+  --v-s2:#eb6834; /* Kepler */
+  --v-s3:#1baf7a; /* RK4 */
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .viz-root{
+    color-scheme:dark;
+    --v-grid:#2c2c2a; --v-text-muted:#898781;
+    --v-s1:#3987e5; --v-s2:#d95926; --v-s3:#199e70;
+  }
+}
+:root[data-theme="dark"] .viz-root{
+  color-scheme:dark;
+  --v-grid:#2c2c2a; --v-text-muted:#898781;
+  --v-s1:#3987e5; --v-s2:#d95926; --v-s3:#199e70;
+}
+.viz-root{ background:var(--v-surface); border:1px solid var(--rule); border-radius:14px; padding:24px 22px 18px; margin:20px 0; }
+.viz-title{ font-size:15px; font-weight:700; margin:0 0 2px; }
+.viz-sub{ font-size:12.5px; color:var(--v-text-secondary); margin:0 0 20px; }
+.viz-panels{ display:flex; gap:28px; flex-wrap:wrap; }
+.viz-panel{ flex:1; min-width:280px; }
+.viz-panel h4{ font-family:var(--mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--v-text-secondary); margin:0 0 12px; font-weight:600; }
+.viz-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.viz-rowlabel{ width:96px; flex-shrink:0; font-family:var(--mono); font-size:11px; color:var(--v-text-primary); line-height:1.3; }
+.viz-track{ position:relative; flex:1; height:22px; }
+.viz-bar-value{ font-family:var(--mono); font-size:11.5px; color:var(--v-text-primary); font-weight:700; white-space:nowrap; }
+.viz-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:18px; font-family:var(--mono); font-size:11px; color:var(--v-text-secondary); }
+.viz-legend-item{ display:flex; align-items:center; gap:6px; }
+.viz-legend-swatch{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.viz-legend-swatch.extrap{ background:none; border:1.5px dashed currentColor; }
+.viz-foot{ font-family:var(--mono); font-size:10.5px; color:var(--v-text-muted); margin-top:16px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back" href="conjunction-e.html">&larr; report</a>
+    <nav class="navlinks">
+      <a href="e-animation.html">Distance (E)</a>
+      <a href="kepler-animation.html">Kepler</a>
+      <a href="rk4-animation.html">RK4</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Benchmarks</div>
+    <h1>Three encrypted computations, one real machine, measured side by side</h1>
+    <p class="dek">Three separate experiments, three separate walkthroughs. This page is the comparison: what each one actually cost, in bootstraps and wall-clock time, all measured on the same host (Apple M-series, 8 cores, macOS/arm64, OpenFHE built from source) at the same demo CKKS parameters (<code>HEStd_NotSet</code>, ring 2<sup>13</sup>).</p>
+  </div>
+
+  <div class="section">
+    <h2>The three experiments</h2>
+    <div class="cards">
+      <a class="pcard" href="e-animation.html">
+        <div class="ptag">Approach E</div>
+        <h4>Distance + threshold</h4>
+        <p>Compares two already-known positions and decrypts only a count of violations. 7 real close-approach events, 63 candidate times, one batched computation.</p>
+      </a>
+      <a class="pcard" href="kepler-animation.html">
+        <div class="ptag">Kepler</div>
+        <h4>Closed-form propagation</h4>
+        <p>Solves Kepler's equation under encryption to place a satellite at a query time, from private orbital elements. No pre-existing position needed.</p>
+      </a>
+      <a class="pcard" href="rk4-animation.html">
+        <div class="ptag">RK4</div>
+        <h4>General numerical propagation</h4>
+        <p>The fallback for dynamics with no closed form: walks forward in small encrypted steps, re-evaluating the force at every one.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The benchmark</h2>
+    <p class="lede">Bootstraps are the dominant cost driver under CKKS &mdash; each one is the single most expensive operation in any of these pipelines. Wall-clock time follows directly from how many a computation needs. Both are shown below, for all three experiments, plus RK4's own extrapolation to the step count that would actually match Kepler's accuracy.</p>
+
+    <div class="viz-root" data-palette="#2a78d6,#eb6834,#1baf7a" id="viz">
+      <div class="viz-title">Bootstraps and wall-clock time, three encrypted computations</div>
+      <div class="viz-sub">Same host, same demo CKKS parameters. RK4's second bar is extrapolated from a real 4-step measurement, not independently run.</div>
+      <div class="viz-panels">
+        <div class="viz-panel" id="panel-boot">
+          <h4>Bootstraps needed</h4>
+        </div>
+        <div class="viz-panel" id="panel-time">
+          <h4>Wall-clock time (log scale)</h4>
+        </div>
+      </div>
+      <div class="viz-legend" id="viz-legend"></div>
+      <div class="viz-foot">Hover or tap a mark for the exact figure and what it measures.</div>
+    </div>
+
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Experiment</th><th>Unit measured</th><th>Bootstraps</th><th>Wall clock</th><th>Status</th></tr></thead>
+      <tbody id="data-table"></tbody>
+    </table>
+    </div>
+
+    <h3>Reading the gap honestly</h3>
+    <p>These aren't quite the same unit of work &mdash; Approach E's 8.5s covers 7 events batched into one SIMD computation, Kepler's 3.86s covers 5 separate query times, RK4's 162s covers 4 sequential integration steps. What's directly comparable is the <i>mechanism</i>: all three are CKKS pipelines on the same host at the same parameters, and bootstrap count is what predicts wall-clock cost in every one of them. Kepler needing zero is a property of having a closed form to exploit; RK4 needing 4 per step is a property of not having one.</p>
+    <div class="callout warn">The RK4 "accurate" bar (720 bootstraps, ~2.5 hours) is <b>extrapolated</b> from the measured steady-state cost (4 bootstraps, ~50.0s/step) &times; the 180 steps <a href="rk4-animation.html">18_'s own error table</a> says are needed to match Kepler's sub-meter floor. It was not run end to end &mdash; see the RK4 walkthrough for why that run wasn't attempted here.</div>
+    <div class="callout good">Kepler's 0 bootstraps and Approach E's 3 both sit at real security parameters' mercy too: production (<code>HEStd_128_classic</code>) parameters need a far larger ring, and Approach E's own report measured that ring's key generation alone exceeding 24GB on a 16GB machine. None of the numbers on this page are production-security numbers &mdash; see each walkthrough's own honesty notes.</div>
+  </div>
+
+  <div class="foot">
+    Sources: <code>results/multi_approach_e_flag_sum.csv</code> (Approach E), <code>results/kepler_encrypted_timing.json</code> (Kepler), <code>results/rk4_encrypted_timing.json</code> and <code>18_rk4_plaintext_reference.py</code>'s printed error table (RK4). Palette validated with the dataviz skill's <code>validate_palette.js</code> (3 categorical slots, all-pairs, light + dark). See <a href="e-animation.html">the distance-comparison walkthrough</a>, <a href="kepler-animation.html">the Kepler walkthrough</a>, <a href="rk4-animation.html">the RK4 walkthrough</a>, and <a href="conjunction-e.html">the full Approach E report</a>.
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var DATA = [
+    { name:'Approach E', sub:'7 events, 63 candidates', unit:'per batch', series:'s1', boot:3,   time:8.5,    extrapolated:false, status:'measured' },
+    { name:'Kepler',      sub:'5 query times',           unit:'per query',series:'s2', boot:0,   time:3.86,   extrapolated:false, status:'measured' },
+    { name:'RK4',         sub:'4 steps (measured)',      unit:'per run',  series:'s3', boot:13,  time:162.0,  extrapolated:false, status:'measured' },
+    { name:'RK4 (accurate)', sub:'180 steps, extrapolated', unit:'per run', series:'s3', boot:720, time:9000.0, extrapolated:true,  status:'extrapolated' }
+  ];
+  var root = document.getElementById('viz');
+  var cs = getComputedStyle(root);
+  var colors = { s1: cs.getPropertyValue('--v-s1').trim(), s2: cs.getPropertyValue('--v-s2').trim(), s3: cs.getPropertyValue('--v-s3').trim() };
+
+  function fmtTime(s){
+    if (s >= 3600) return (s/3600).toFixed(1) + 'h';
+    if (s >= 60) return (s/60).toFixed(1) + 'm';
+    return s.toFixed(2) + 's';
+  }
+
+  function buildLinearPanel(container, values, maxVal){
+    values.forEach(function(d){
+      var row = document.createElement('div');
+      row.className = 'viz-row';
+      var pct = Math.max(d.boot>0 ? 1.5 : 0, (d.boot/maxVal)*100);
+      var color = colors[d.series];
+      row.innerHTML =
+        '<div class="viz-rowlabel">' + d.name + '<br><span style="opacity:.65">' + d.sub + '</span></div>' +
+        '<div class="viz-track">' +
+          '<div style="position:absolute; left:0; top:6px; bottom:6px; width:' + pct + '%; min-width:' + (d.boot>0?'3px':'0') + ';' +
+            'background:' + color + ';' + (d.extrapolated ? 'opacity:.32; border:1.5px dashed ' + color + ';' : '') +
+            'border-radius:3px;" title="' + d.name + ': ' + d.boot + ' bootstraps (' + d.status + ')"></div>' +
+          '<div class="viz-bar-value" style="position:absolute; left:calc(' + pct + '% + 8px); top:1px;">' + d.boot + '</div>' +
+        '</div>';
+      container.appendChild(row);
+    });
+    var axis = document.createElement('div');
+    axis.style.cssText = 'display:flex; justify-content:space-between; margin:2px 0 0 106px; font-family:var(--mono); font-size:10px; color:var(--v-text-muted);';
+    axis.innerHTML = '<span>0</span><span>' + maxVal + '</span>';
+    container.appendChild(axis);
+  }
+
+  function buildLogPanel(container, values, minVal, maxVal){
+    var logMin = Math.log10(minVal), logMax = Math.log10(maxVal);
+    values.forEach(function(d){
+      var row = document.createElement('div');
+      row.className = 'viz-row';
+      var pct = ((Math.log10(d.time) - logMin) / (logMax - logMin)) * 100;
+      var color = colors[d.series];
+      row.innerHTML =
+        '<div class="viz-rowlabel">' + d.name + '<br><span style="opacity:.65">' + d.sub + '</span></div>' +
+        '<div class="viz-track">' +
+          '<div style="position:absolute; left:0; top:10px; right:0; height:1px; background:var(--v-grid);"></div>' +
+          '<div style="position:absolute; left:' + pct + '%; top:4px; width:14px; height:14px; margin-left:-7px; border-radius:50%;' +
+            'background:' + (d.extrapolated ? 'var(--v-surface)' : color) + '; border:2.5px ' + (d.extrapolated?'dashed':'solid') + ' ' + color + ';" ' +
+            'title="' + d.name + ': ' + fmtTime(d.time) + ' (' + d.status + ')"></div>' +
+          '<div class="viz-bar-value" style="position:absolute; left:calc(' + pct + '% + 12px); top:1px;">' + fmtTime(d.time) + '</div>' +
+        '</div>';
+      container.appendChild(row);
+    });
+    var axis = document.createElement('div');
+    axis.style.cssText = 'display:flex; justify-content:space-between; margin:2px 0 0 106px; font-family:var(--mono); font-size:10px; color:var(--v-text-muted);';
+    var ticks = [1,10,100,1000,10000].filter(function(t){ return t>=minVal && t<=maxVal; });
+    axis.innerHTML = ticks.map(function(t){ return '<span>' + (t>=1000? t/1000+'k':t) + 's</span>'; }).join('');
+    container.appendChild(axis);
+  }
+
+  buildLinearPanel(document.getElementById('panel-boot'), DATA, 750);
+  buildLogPanel(document.getElementById('panel-time'), DATA, 1, 10000);
+
+  var legend = document.getElementById('viz-legend');
+  var names = { s1:'Approach E', s2:'Kepler', s3:'RK4' };
+  ['s1','s2','s3'].forEach(function(s){
+    var item = document.createElement('div');
+    item.className = 'viz-legend-item';
+    item.innerHTML = '<span class="viz-legend-swatch" style="background:' + colors[s] + ';"></span>' + names[s];
+    legend.appendChild(item);
+  });
+  var extrapItem = document.createElement('div');
+  extrapItem.className = 'viz-legend-item';
+  extrapItem.style.color = colors.s3;
+  extrapItem.innerHTML = '<span class="viz-legend-swatch extrap"></span>extrapolated, not measured';
+  legend.appendChild(extrapItem);
+
+  var tbody = document.getElementById('data-table');
+  DATA.forEach(function(d){
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + d.name + ' <span style="color:var(--ink-soft); font-size:11.5px;">(' + d.sub + ')</span></td>' +
+      '<td class="mono">' + d.unit + '</td>' +
+      '<td class="mono">' + d.boot + '</td>' +
+      '<td class="mono">' + fmtTime(d.time) + '</td>' +
+      '<td>' + d.status + '</td>';
+    tbody.appendChild(tr);
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kepler's equation, encrypted</title>
+<style>
+:root{
+  --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
+  --rule:#c7d1cd; --accent:#2f6f7a; --accent-soft:#d9e8ea; --accent-ink:#0f3339;
+  --accent2:#8a5a3b; --accent2-soft:#f0e2d4;
+  --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
+  --mono: "SF Mono","IBM Plex Mono","JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: -apple-system, "Neue Haas Grotesk Text Pro", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d1214; --surface:#141b1e; --surface-alt:#1b2528; --ink:#e7edee; --ink-soft:#9fb0b4;
+    --rule:#2a3538; --accent:#5fb8c4; --accent-soft:#17313a; --accent-ink:#bfe9ee;
+    --accent2:#d29a6e; --accent2-soft:#3a2a1c;
+    --good:#6fce93; --good-soft:#173226; --bad:#e5896e; --bad-soft:#33201b; --warn:#e0b15a; --warn-soft:#332612;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1214; --surface:#141b1e; --surface-alt:#1b2528; --ink:#e7edee; --ink-soft:#9fb0b4;
+  --rule:#2a3538; --accent:#5fb8c4; --accent-soft:#17313a; --accent-ink:#bfe9ee;
+  --accent2:#d29a6e; --accent2-soft:#3a2a1c;
+  --good:#6fce93; --good-soft:#173226; --bad:#e5896e; --bad-soft:#33201b; --warn:#e0b15a; --warn-soft:#332612;
+}
+:root[data-theme="light"]{
+  --bg:#eef1ef; --surface:#ffffff; --surface-alt:#e3e9e6; --ink:#131a1f; --ink-soft:#55636a;
+  --rule:#c7d1cd; --accent:#2f6f7a; --accent-soft:#d9e8ea; --accent-ink:#0f3339;
+  --accent2:#8a5a3b; --accent2-soft:#f0e2d4;
+  --good:#2f7d4f; --good-soft:#dff0e4; --bad:#a8412a; --bad-soft:#f6e1da; --warn:#a5741e; --warn-soft:#f3e6cd;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:820px; margin:0 auto; padding:0 24px 120px; }
+a{ color:var(--accent); }
+code{ font-family:var(--mono); font-size:12.5px; background:var(--surface-alt); padding:1px 5px; border-radius:3px; }
+.eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+.topbar{ position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--rule); }
+.topbar-inner{ max-width:820px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.back{ font-family:var(--mono); font-size:12px; text-decoration:none; color:var(--ink-soft); white-space:nowrap; }
+.back:hover{ color:var(--accent); }
+.chapternav{ display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; }
+.chapternav::-webkit-scrollbar{ display:none; }
+.chapternav a{ font-family:var(--mono); font-size:11px; text-decoration:none; color:var(--ink-soft); padding:6px 9px; border-radius:5px; white-space:nowrap; }
+.chapternav a:hover{ background:var(--surface-alt); color:var(--ink); }
+.chapternav a.active{ background:var(--accent-soft); color:var(--accent-ink); font-weight:700; }
+
+.hero{ padding:56px 0 28px; }
+h1{ font-size:31px; line-height:1.22; margin:10px 0 12px; letter-spacing:-.01em; }
+.dek{ font-size:16.5px; color:var(--ink-soft); max-width:60ch; }
+
+.chapter{ padding:52px 0; border-top:1px solid var(--rule); scroll-margin-top:70px; }
+.chapter:first-of-type{ border-top:none; }
+.chapter-num{ font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:700; }
+.chapter h2{ font-size:23px; margin:6px 0 18px; letter-spacing:-.01em; }
+.chapter h3{ font-size:15px; margin:26px 0 10px; }
+p{ margin:0 0 14px; }
+.lede{ font-size:16px; }
+ul.plain{ margin:0 0 14px; padding-left:20px; }
+ul.plain li{ margin-bottom:6px; }
+
+.callout{ border-radius:8px; padding:14px 16px; margin:18px 0; font-size:14px; border:1px solid transparent; }
+.callout.good{ background:var(--good-soft); border-color:color-mix(in srgb, var(--good) 35%, transparent); color:var(--ink); }
+.callout.bad{ background:var(--bad-soft); border-color:color-mix(in srgb, var(--bad) 35%, transparent); }
+.callout.warn{ background:var(--warn-soft); border-color:color-mix(in srgb, var(--warn) 35%, transparent); }
+.callout b{ color:inherit; }
+
+table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:13.5px; }
+th,td{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--rule); }
+th{ font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; }
+td.mono, th.mono{ font-family:var(--mono); }
+tr.hi td{ background:var(--good-soft); font-weight:700; }
+.tbl-wrap{ overflow-x:auto; }
+
+.stepper{ position:relative; margin:22px 0 8px; padding-left:26px; border-left:2px solid var(--rule); }
+.stepitem{ position:relative; padding-bottom:22px; }
+.stepitem:last-child{ padding-bottom:0; }
+.stepitem::before{ content:""; position:absolute; left:-33px; top:2px; width:14px; height:14px; border-radius:50%; background:var(--accent); border:3px solid var(--bg); }
+.stepitem b{ display:block; font-size:13.5px; margin-bottom:3px; }
+.stepitem span{ font-size:13.5px; color:var(--ink-soft); }
+.stepitem code{ font-size:11.5px; }
+
+.foot{ padding-top:40px; border-top:1px solid var(--rule); font-size:13px; color:var(--ink-soft); }
+.foot a{ color:var(--accent); }
+
+@media (prefers-reduced-motion: no-preference){
+  .chapter{ animation:rise .5s ease both; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
+}
+
+/* ---- spine ---- */
+.spine{ background:var(--surface); border:1px solid var(--rule); border-radius:14px; padding:22px 22px 18px; margin:0 0 44px; }
+.spine-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
+.spine-head h2{ font-size:18px; margin:2px 0 0; }
+.spine-sub{ font-size:13px; color:var(--ink-soft); margin:0 0 18px; max-width:62ch; }
+
+.lane{ margin:16px 0; }
+.lane-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.lane-label .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+.lane-label.plain .dot{ background:var(--ink-soft); }
+.lane-label.cipher .dot{ background:var(--accent); }
+
+.track{ position:relative; height:58px; margin:0 4px 6px; }
+.track-line{ position:absolute; left:0; right:0; top:32px; height:2px; background:var(--rule); border-radius:1px; }
+.track-node{ position:absolute; top:26px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:var(--surface); border:2px solid var(--rule); }
+.track-tick{ position:absolute; top:42px; font-family:var(--mono); font-size:9px; color:var(--ink-soft); transform:translateX(-50%); white-space:nowrap; }
+.token{ position:absolute; top:21px; width:24px; height:24px; margin-left:-12px; margin-top:-5px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:left .9s cubic-bezier(.4,0,.2,1); z-index:3; box-shadow:0 0 0 4px var(--surface); }
+.no-anim .token{ transition:none; }
+.token.plain{ background:var(--ink-soft); }
+.token.cipher{ background:var(--accent); }
+.token::after{ content:""; width:8px; height:8px; border-radius:50%; background:var(--surface); }
+.token.done{ background:var(--good); }
+.bubble{ position:absolute; top:-18px; transform:translateX(-50%); font-family:var(--mono); font-size:11.5px; white-space:nowrap; background:var(--surface-alt); border:1px solid var(--rule); border-radius:6px; padding:3px 8px; transition:left .9s cubic-bezier(.4,0,.2,1); z-index:4; }
+.no-anim .bubble{ transition:none; }
+.bubble.plain{ color:var(--ink); }
+.bubble.cipher{ color:var(--accent-ink); background:var(--accent-soft); border-color:var(--accent); }
+.badge-done{ display:inline-block; font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; background:var(--good-soft); color:var(--good); border-radius:4px; padding:1px 6px; margin-left:6px; }
+
+.stage-caption{ background:var(--surface-alt); border-radius:8px; padding:12px 14px; margin:18px 0 6px; font-size:13.5px; min-height:38px; }
+.stage-caption b{ font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px; }
+
+.stagevis{ margin:16px 0 6px; min-height:220px; box-sizing:border-box; }
+.sv-fork{ display:grid; grid-template-columns:1fr 1fr; gap:18px; min-height:220px; box-sizing:border-box; }
+@media (max-width:640px){ .sv-fork{ grid-template-columns:1fr; min-height:0; } }
+.sv-card{ background:var(--surface-alt); border-radius:10px; padding:20px 22px; min-height:200px; box-sizing:border-box; }
+.sv-card.plain{ border-top:3px solid var(--ink-soft); }
+.sv-card.cipher{ border-top:3px solid var(--accent); }
+.sv-card .sv-tag{ font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:12px; }
+.sv-card.cipher .sv-tag{ color:var(--accent); }
+
+.sv-dotrow{ position:relative; height:60px; margin:8px 4px 10px; }
+.sv-sat{ opacity:1; position:absolute; top:10px; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; color:var(--surface); font-weight:700; }
+.sv-sat.a{ background:var(--ink-soft); left:18%; }
+.sv-sat.b{ background:var(--accent); left:70%; }
+.sv-coord{ opacity:1; position:absolute; top:42px; font-family:var(--mono); font-size:11px; color:var(--ink-soft); transform:translateX(-50%); white-space:nowrap; }
+
+.sv-formula{ opacity:1; font-family:var(--mono); font-size:14px; color:var(--ink); min-height:24px; line-height:1.5; }
+.sv-result{ opacity:1; font-family:var(--mono); font-size:16px; font-weight:700; margin-top:10px; }
+.sv-lock{ font-size:42px; display:inline-block; }
+.sv-note{ opacity:1; font-family:var(--mono); font-size:11.5px; color:var(--good); background:var(--good-soft); border-radius:6px; padding:6px 10px; margin-top:10px; display:inline-block; }
+
+@media (prefers-reduced-motion: no-preference){
+  .sv-in-l{ animation:svInL .5s ease both; }
+  .sv-in-r{ animation:svInR .5s ease both; }
+  .sv-lockopen{ animation:svLockOpen .6s ease .3s both; }
+}
+@keyframes svInL{ from{opacity:0; transform:translateX(-16px);} to{opacity:1; transform:none;} }
+@keyframes svInR{ from{opacity:0; transform:translateX(16px);} to{opacity:1; transform:none;} }
+@keyframes svLockOpen{ from{ transform:rotate(0) translateY(0); } to{ transform:rotate(-16deg) translateY(-1px); } }
+.no-anim .stagevis *{ animation:none !important; }
+
+.controls{ display:flex; align-items:center; gap:10px; margin-top:18px; flex-wrap:wrap; }
+.ctlbtn{ font-family:var(--mono); font-size:13px; background:var(--surface-alt); border:1px solid var(--rule); color:var(--ink); border-radius:6px; padding:6px 11px; cursor:pointer; }
+.ctlbtn:hover{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+.ctlbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.scrub{ flex:1; min-width:120px; accent-color:var(--accent); }
+.stagecount{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+.jumplink{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); text-decoration:none; margin-left:auto; }
+.jumplink:hover{ color:var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back" href="benchmarks.html">&larr; benchmarks</a>
+    <nav class="chapternav" id="chapternav">
+      <a href="#question">1 Question</a>
+      <a href="#reciprocal">2 Reciprocal</a>
+      <a href="#precision">3 Precision</a>
+      <a href="#measured">4 Measured</a>
+      <a href="#next">5 Next</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Encrypted propagation &middot; Kepler walkthrough</div>
+    <h1>Solving Kepler's equation without ever decrypting the orbit</h1>
+    <p class="dek">One real run of <code>17_kepler_encrypted_openfhe.py</code>, alongside its plain-float twin <code>16_kepler_plain_approx_pipeline.py</code>, on STARLINK&#8209;35712's real TLE elements. Every number on this page is from one of those two scripts' own output.</p>
+  </div>
+
+  <div class="spine" id="spine" aria-label="Animated walkthrough of the encrypted Kepler solve">
+    <div class="spine-head">
+      <div>
+        <div class="eyebrow">Watch it work</div>
+        <h2>Query time t=+1800s, traveling through both a plain-float twin and the real encrypted run</h2>
+      </div>
+    </div>
+    <p class="spine-sub">The left lane is plain Python floats running the <i>identical</i> sequence of operations the right lane runs under encryption &mdash; same polynomial sin/cos, same multiply-only reciprocal, zero encryption. It exists to isolate approximation error from CKKS noise. Both lanes reach the same answer.</p>
+
+    <div class="lane">
+      <div class="lane-label plain"><span class="dot"></span>Plain-float twin (16_) &mdash; same algorithm, zero encryption</div>
+      <div class="track" id="track-plain">
+        <div class="track-line"></div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label cipher"><span class="dot"></span>Encrypted (17_) &mdash; OpenFHE, host never decrypts anything mid-flight</div>
+      <div class="track" id="track-cipher">
+        <div class="track-line"></div>
+      </div>
+    </div>
+
+    <div class="stage-caption" id="stage-caption"><b>stage</b><span id="stage-caption-text">&nbsp;</span></div>
+
+    <div class="stagevis" id="stagevis">
+      <div class="sv-fork" id="sv-fork">
+        <div class="sv-card plain" id="sv-plain-card"><div class="sv-tag">plain-float twin</div><div id="sv-plain-body"></div></div>
+        <div class="sv-card cipher" id="sv-cipher-card"><div class="sv-tag">encrypted</div><div id="sv-cipher-body"></div></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ctlbtn" id="btn-prev" title="Previous stage" aria-label="Previous stage">&#9664;</button>
+      <button class="ctlbtn" id="btn-play" title="Play/pause" aria-label="Play or pause">&#10074;&#10074;</button>
+      <button class="ctlbtn" id="btn-next" title="Next stage" aria-label="Next stage">&#9654;</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="4" step="1" value="0" aria-label="Scrub through stages">
+      <span class="stagecount" id="stagecount">stage 1 / 5</span>
+      <a class="jumplink" href="#question">full explanation for every stage &darr;</a>
+    </div>
+  </div>
+
+  <section class="chapter" id="question">
+    <div class="chapter-num">01</div>
+    <h2>What Kepler's equation buys you</h2>
+    <p class="lede">Given an orbit's shape and phase at some epoch &mdash; semi-major axis <code>a</code>, eccentricity <code>e</code>, mean anomaly <code>M&#8320;</code> &mdash; where is the satellite at an arbitrary later time <code>t</code>? Kepler's equation, <code>M = E &minus; e&middot;sin(E)</code>, has an exact solution for the eccentric anomaly <code>E</code>, and from <code>E</code> the position falls out directly. No stepping through time, no re-deriving the trajectory &mdash; solve once, for any <code>t</code>.</p>
+    <p>The catch: solving it needs Newton-Raphson, <code>E &larr; E &minus; f(E)/f&prime;(E)</code>, and CKKS has no ciphertext/ciphertext division. This repo's own earlier work (<a href="https://github.com/jehadbaeth/homoenc/blob/main/notes/FHE-HEIR/SGP4%20FHE%20Prototype%20Findings.md">notes/FHE-HEIR/SGP4 FHE Prototype Findings.md</a>) hit exactly this wall and concluded iterative Kepler solving doesn't work under CKKS without decrypting an intermediate value. This page is the test of whether that still holds.</p>
+  </section>
+
+  <section class="chapter" id="reciprocal">
+    <div class="chapter-num">02</div>
+    <h2>A reciprocal that never divides</h2>
+    <p class="lede"><code>1/f&prime;(E) = 1/(1&minus;e&middot;cos E)</code> doesn't need a division operator if it's built as a multiply-only Newton-Raphson refinement instead: <code>y &larr; y&middot;(2&minus;d&middot;y)</code>, starting from <code>y&#8320;=1</code>.</p>
+    <div class="stepper">
+      <div class="stepitem"><b>Why y&#8320;=1 is already a good guess.</b> <span>STARLINK&#8209;35712's eccentricity is 0.0001093 &mdash; the denominator <code>1&minus;e cos E</code> sits within about 1&times;10&#8315;&#8308; of exactly 1.0. That's the entire reason this converges fast: a near-circular orbit makes the starting guess nearly exact already.</span></div>
+      <div class="stepitem"><b>Round 1 is free.</b> <span>With y&#8320;=1, <code>d&middot;y&#8320;=d</code> exactly, so round 1 simplifies to <code>y&#8321;=2&minus;d</code> &mdash; a plaintext-scalar affine map, not a ciphertext-ciphertext multiply.</span></div>
+      <div class="stepitem"><b>2 total rounds is enough.</b> <span>Validated in plain floats (16_) against the exact reference (14_, real division): sub-meter position error.</span></div>
+    </div>
+    <p>This is not "division now works under CKKS." Division still doesn't exist. What changed is not needing it: the reciprocal is approximated with operations CKKS always had, and it stays cheap specifically because this orbit is near-circular. A more eccentric orbit would need more refinement rounds &mdash; still no division, just more multiplies.</p>
+  </section>
+
+  <section class="chapter" id="precision">
+    <div class="chapter-num">03</div>
+    <h2>Why this page runs two lanes</h2>
+    <p class="lede">A wrong answer under encryption can come from two unrelated places: the approximation itself (polynomial sin/cos, the reciprocal) being imprecise, or CKKS-specific noise (fixed-point scale, bootstrap noise) on top of a correct approximation. Blaming the wrong one wastes time. So this page runs the identical operation sequence twice: once in plain floats (16_, zero encryption) and once for real (17_, OpenFHE) &mdash; and diffs both against an exact math.sin/cos, real-division reference (14_).</p>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Stage</th><th>Max position error</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Plain-float twin vs. exact reference</td><td class="mono">0.03&ndash;0.80 m</td><td>approximation only (poly sin/cos + NR reciprocal)</td></tr>
+        <tr class="hi"><td>Encrypted vs. plain-float twin</td><td class="mono">not detectable at 6 printed digits</td><td>CKKS + bootstrap noise, on top of the above</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>sin(E) and cos(E) themselves are fit as ordinary least-squares polynomials (degree 10) over the bounded domain this satellite's mean anomaly actually occupies across the &plusmn;1800s window &mdash; rescaled to [&minus;1,1] first, the same numerical-conditioning fix the earlier TenSEAL prototype needed (<code>15_fit_kepler_trig_polys.py</code>). No iterated composition, unlike the sign function elsewhere in this project: sin/cos are smooth over a bounded domain, so one fit suffices.</p>
+  </section>
+
+  <section class="chapter" id="measured">
+    <div class="chapter-num">04</div>
+    <h2>What actually ran, all 5 query times</h2>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>t (s)</th><th>px (km)</th><th>py (km)</th><th>Bootstraps</th><th>Wall clock</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">&minus;1800</td><td class="mono">&minus;3971.989017</td><td class="mono">5570.116475</td><td class="mono">0</td><td class="mono">0.70s</td></tr>
+        <tr><td class="mono">&minus;900</td><td class="mono">&minus;6832.066463</td><td class="mono">&minus;360.625990</td><td class="mono">0</td><td class="mono">0.74s</td></tr>
+        <tr><td class="mono">0</td><td class="mono">&minus;3363.424943</td><td class="mono">&minus;5957.294935</td><td class="mono">0</td><td class="mono">0.77s</td></tr>
+        <tr><td class="mono">+900</td><td class="mono">3221.038372</td><td class="mono">&minus;6034.654914</td><td class="mono">0</td><td class="mono">0.71s</td></tr>
+        <tr class="hi"><td class="mono">+1800</td><td class="mono">6820.303915</td><td class="mono">&minus;519.813277</td><td class="mono">0</td><td class="mono">0.95s</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout good"><b>0 bootstraps across every query time.</b> Context + keygen: 0.84s. Total wall clock for all 5: 3.86s. The whole 2-iteration solve plus perifocal reconstruction used well under half the 37-level budget &mdash; nowhere near needing a refresh.</div>
+    <p>Ring 2<sup>13</sup>, <code>HEStd_NotSet</code> &mdash; demo, insecure parameters, same disclosure as the rest of this project. Measured on an Apple M-series chip (8 cores, macOS/arm64), OpenFHE built from source.</p>
+  </section>
+
+  <section class="chapter" id="next">
+    <div class="chapter-num">05</div>
+    <h2>What this does and doesn't settle</h2>
+    <p class="lede">It closes the specific wall this repo's own earlier findings described: an iterative Kepler solve runs under CKKS end to end, using only multiply-only Newton-Raphson and never a mid-loop decrypt. It also doesn't generalize on its own &mdash; this result leans on the orbit being near-circular (fast reciprocal convergence) and the window being short enough to avoid mean-anomaly wraparound (no range reduction implemented).</p>
+    <p>Most real perturbation dynamics don't have a closed form the way two-body motion does. <a href="rk4-animation.html">The RK4 walkthrough</a> is what happens when there's no equation to solve &mdash; only a trajectory to walk, one small step at a time. <a href="benchmarks.html">The benchmarks page</a> puts both side by side with Approach E.</p>
+  </section>
+
+  <div class="foot">
+    Sources: <code>oem-conjunction/14_kepler_plaintext_reference.py</code> through <code>17_kepler_encrypted_openfhe.py</code>. Raw output: <code>results/kepler_encrypted_timing.json</code>. See also <a href="rk4-animation.html">the RK4 walkthrough</a>, <a href="benchmarks.html">the benchmarks page</a>, and <a href="e-animation.html">the Approach E distance-comparison animation</a>.
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#chapternav a'));
+  var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  function onScroll(){
+    var y = window.scrollY + 90;
+    var idx = 0;
+    for (var i=0;i<sections.length;i++){ if (sections[i] && sections[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('active', i===idx); });
+  }
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+
+<script>
+(function(){
+  var NODES = ['encrypt','NR round 1','NR round 2','reconstruct','decrypt'];
+  var PCT = [5, 27, 50, 73, 95];
+  var TOTAL_STAGES = 5;
+
+  function buildTrack(id, cls){
+    var el = document.getElementById(id);
+    PCT.forEach(function(pct, i){
+      var n = document.createElement('div');
+      n.className = 'track-node';
+      n.style.left = pct + '%';
+      el.appendChild(n);
+      var t = document.createElement('div');
+      t.className = 'track-tick';
+      t.style.left = pct + '%';
+      t.textContent = NODES[i];
+      el.appendChild(t);
+    });
+    var token = document.createElement('div');
+    token.className = 'token ' + cls;
+    el.appendChild(token);
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble ' + cls;
+    el.appendChild(bubble);
+    return {token: token, bubble: bubble};
+  }
+  var plainEls = buildTrack('track-plain', 'plain');
+  var cipherEls = buildTrack('track-cipher', 'cipher');
+
+  var stageCaptionText = document.getElementById('stage-caption-text');
+  var svPlainBody = document.getElementById('sv-plain-body');
+  var svCipherBody = document.getElementById('sv-cipher-body');
+  var scrub = document.getElementById('scrub');
+  var stagecount = document.getElementById('stagecount');
+  var btnPlay = document.getElementById('btn-play');
+
+  function body(node){
+    if (node===0){
+      return {
+        plain: '<div class="sv-dotrow"><div class="sv-sat a sv-in-l">a,e</div></div>'
+          + '<div class="sv-formula">a=6840.83 km, e=0.0001093 &mdash; plain Python floats, never encrypted.</div>',
+        cipher: '<div class="sv-dotrow"><div class="sv-sat b sv-in-r">&#128274;</div></div>'
+          + '<div class="sv-formula">Enc(a), Enc(e) &mdash; genuinely encrypted under CKKS. These are the only private inputs.</div>'
+      };
+    }
+    if (node===1){
+      return {
+        plain: '<div class="sv-formula">E&#8320;=M &rarr; E&#8321;=E&#8320;&minus;(E&#8320;&minus;e sin E&#8320;&minus;M)/(1&minus;e cos E&#8320;)</div>'
+          + '<div class="sv-result">sin/cos: degree-10 polynomial (numpy.polyval). Reciprocal: y&#8321;=2&minus;d, free.</div>',
+        cipher: '<div class="sv-formula">Same formula, EvalPoly + EvalMult/EvalAdd only &mdash; no division op exists to call.</div>'
+          + '<div class="sv-result">0 bootstraps so far.</div>'
+      };
+    }
+    if (node===2){
+      return {
+        plain: '<div class="sv-formula">E&#8321; re-evaluated &rarr; E&#8322;</div>'
+          + '<div class="sv-result">Converged to ~1&times;10&#8315;&sup1;&sup2; rad vs. exact math.sin/cos.</div>',
+        cipher: '<div class="sv-formula">Second Newton-Raphson round, same structure, one more EvalPoly pair.</div>'
+          + '<div class="sv-result">Still 0 bootstraps &mdash; well under the 37-level budget.</div>'
+      };
+    }
+    if (node===3){
+      return {
+        plain: '<div class="sv-formula">r=a(1&minus;e cos E)<br>cos&nu;=(cos E&minus;e)/(1&minus;e cos E)<br>sin&nu;=&radic;(1&minus;e&sup2;) sin E/(1&minus;e cos E)</div>'
+          + '<div class="sv-result">px=r cos&nu;, py=r sin&nu; &mdash; no atan2, no branch.</div>',
+        cipher: '<div class="sv-formula">Identical formula, evaluated homomorphically on the round-2 ciphertexts.</div>'
+          + '<div class="sv-result">px, py still fully encrypted.</div>'
+      };
+    }
+    return {
+      plain: '<div class="sv-result" style="text-align:center;">px=6820.303915 km<br>py=&minus;519.813277 km</div>'
+        + '<div style="text-align:center;"><span class="sv-note">Computed directly &mdash; nothing to decrypt, this lane was never encrypted.</span></div>',
+      cipher: '<div style="text-align:center; padding:4px 0;"><span class="sv-lock sv-lockopen">&#128275;</span></div>'
+        + '<div class="sv-result" style="text-align:center;">px=6820.303915 km<br>py=&minus;519.813277 km</div>'
+        + '<div style="text-align:center;"><span class="sv-note">Decrypted. Matches the plain-float twin to 6 printed digits. 0 bootstraps, 0.95s.</span></div>'
+    };
+  }
+
+  var CAPTIONS = [
+    'Both lanes start from the same private orbital elements — one stays in plain floats to isolate approximation error, the other is genuinely encrypted under CKKS.',
+    'First Newton-Raphson round on Kepler\'s equation. The reciprocal never calls a division operator in either lane — CKKS doesn\'t have one, and the plain-float lane mirrors that discipline exactly, on purpose.',
+    'Second round. Eccentricity this small means convergence is essentially done already — both lanes agree to machine precision.',
+    'Position reconstructed directly from the converged eccentric anomaly — no arctangent, no branch, in either lane.',
+    'Decrypt and compare. The whole point of running two lanes: this checks whether CKKS noise added anything on top of the approximation floor already measured — here it didn\'t, at printed precision.'
+  ];
+
+  var state = { stage: 0, playing: false, timer: null, lastNode: -1 };
+
+  function render(){
+    var s = state.stage;
+    var pct = PCT[s];
+    plainEls.token.style.left = pct + '%';
+    plainEls.bubble.style.left = pct + '%';
+    cipherEls.token.style.left = pct + '%';
+    cipherEls.bubble.style.left = pct + '%';
+    plainEls.token.classList.toggle('done', s>=4);
+    cipherEls.token.classList.toggle('done', s>=4);
+
+    var labels = ['encrypt','NR 1','NR 2','reconstruct','px=6820.30'];
+    plainEls.bubble.innerHTML = labels[s] + (s>=4 ? '<span class="badge-done">done</span>' : '');
+    cipherEls.bubble.innerHTML = labels[s] + (s>=4 ? '<span class="badge-done">done</span>' : '');
+
+    stageCaptionText.textContent = ' ' + CAPTIONS[s];
+
+    if (s !== state.lastNode){
+      state.lastNode = s;
+      var b = body(s);
+      svPlainBody.innerHTML = b.plain;
+      svCipherBody.innerHTML = b.cipher;
+    }
+
+    scrub.value = s;
+    stagecount.textContent = 'stage ' + (s+1) + ' / ' + TOTAL_STAGES;
+  }
+
+  function goto(n, instant){
+    state.stage = Math.max(0, Math.min(TOTAL_STAGES-1, n));
+    if (instant){
+      document.getElementById('spine').classList.add('no-anim');
+      render();
+    } else {
+      document.getElementById('spine').classList.remove('no-anim');
+      render();
+    }
+  }
+
+  function stopTimer(){ if (state.timer){ clearTimeout(state.timer); state.timer = null; } }
+  function scheduleNext(){
+    stopTimer();
+    var dur = state.stage===TOTAL_STAGES-1 ? 3200 : 1900;
+    state.timer = setTimeout(function(){
+      if (!state.playing) return;
+      if (state.stage >= TOTAL_STAGES-1) goto(0); else goto(state.stage+1);
+      scheduleNext();
+    }, dur);
+  }
+  function setPlaying(p){
+    state.playing = p;
+    btnPlay.innerHTML = p ? '&#10074;&#10074;' : '&#9654;';
+    btnPlay.setAttribute('aria-label', p ? 'Pause' : 'Play');
+    if (p) scheduleNext(); else stopTimer();
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', function(){ setPlaying(false); goto(state.stage-1); });
+  document.getElementById('btn-next').addEventListener('click', function(){ setPlaying(false); goto(state.stage+1); });
+  btnPlay.addEventListener('click', function(){ setPlaying(!state.playing); });
+  scrub.addEventListener('input', function(){ setPlaying(false); goto(parseInt(scrub.value,10)); });
+  document.getElementById('spine').addEventListener('keydown', function(e){
+    if (e.key==='ArrowRight'){ setPlaying(false); goto(state.stage+1); }
+    if (e.key==='ArrowLeft'){ setPlaying(false); goto(state.stage-1); }
+    if (e.key===' '){ e.preventDefault(); setPlaying(!state.playing); }
+  });
+  document.getElementById('spine').setAttribute('tabindex','0');
+
+  var params = new URLSearchParams(window.location.search);
+  var stepParam = params.get('step');
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (stepParam !== null && !isNaN(parseInt(stepParam,10))){
+    goto(parseInt(stepParam,10), true);
+    setPlaying(false);
+  } else {
+    goto(0, true);
+    setPlaying(!reduceMotion);
+  }
+})();
+</script>
+
+</body>
+</html>
