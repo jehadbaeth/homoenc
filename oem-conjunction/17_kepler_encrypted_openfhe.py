@@ -202,7 +202,7 @@ def deepest_level(cts):
     return max(ct.GetLevel() for ct in cts)
 
 
-def kepler_solve_encrypted(cc, keys, depth, coeffs, E, e, M, n_iters, on_bootstrap=None):
+def kepler_solve_encrypted(cc, keys, depth, coeffs, E, e, M, n_iters, on_bootstrap=None, on_level=None):
     n_bootstraps = 0
     t_compose = 0.0
     t_bootstrap = 0.0
@@ -222,6 +222,8 @@ def kepler_solve_encrypted(cc, keys, depth, coeffs, E, e, M, n_iters, on_bootstr
         u = rescale_affine(cc, E, lo, hi)
         s = cc.EvalPoly(u, coeffs["sin_E"]["coeffs"])
         c = cc.EvalPoly(u, coeffs["cos_E"]["coeffs"])
+        if on_level:
+            on_level("NR round %d: sin/cos evaluated" % k, s.GetLevel())
 
         e_s = cc.EvalMult(e, s)
         f = cc.EvalAdd(cc.EvalSub(E, e_s), -M)  # M is public (query time offset)
@@ -240,11 +242,13 @@ def kepler_solve_encrypted(cc, keys, depth, coeffs, E, e, M, n_iters, on_bootstr
         dE = cc.EvalMult(f, recip)
         E = cc.EvalSub(E, dE)
         t_compose += time.perf_counter() - t0
+        if on_level:
+            on_level("NR round %d: E updated" % k, E.GetLevel())
 
     return E, s, c, fp, recip, n_bootstraps, t_compose, t_bootstrap
 
 
-def perifocal_position_encrypted(cc, a, e, s, c, fp, recip, coeffs):
+def perifocal_position_encrypted(cc, a, e, s, c, fp, recip, coeffs, on_level=None):
     elo, ehi = coeffs["ecc_domain"]
     u_e = rescale_affine(cc, e, elo, ehi)
     sqrt_term = cc.EvalPoly(u_e, coeffs["sqrt_one_minus_e2"]["coeffs"])
@@ -254,6 +258,8 @@ def perifocal_position_encrypted(cc, a, e, s, c, fp, recip, coeffs):
     sin_nu = cc.EvalMult(cc.EvalMult(sqrt_term, s), recip)
     px = cc.EvalMult(r, cos_nu)
     py = cc.EvalMult(r, sin_nu)
+    if on_level:
+        on_level("reconstruct: px,py computed", px.GetLevel())
     return px, py
 
 
@@ -288,11 +294,17 @@ def main():
         def on_bootstrap(k, level, t=t):
             print(f"  t={t:+6d}s  [bootstrap #{k}] refreshed to level {level}")
 
+        def on_level(label, level, t=t):
+            print(f"  t={t:+6d}s  level after {label}: {level}/{depth} ({depth-level} remaining)")
+
+        show_levels = (t == QUERY_TIMES_S[-1])  # print the full level trace for one representative query time
         t_start = time.perf_counter()
         E, s, c, fp, recip, n_boot, t_compose, t_boot = kepler_solve_encrypted(
-            cc, keys, depth, coeffs, ct_E0, ct_e, M_val, KEPLER_NR_ITERS, on_bootstrap
+            cc, keys, depth, coeffs, ct_E0, ct_e, M_val, KEPLER_NR_ITERS, on_bootstrap,
+            on_level if show_levels else None
         )
-        px, py = perifocal_position_encrypted(cc, ct_a, ct_e, s, c, fp, recip, coeffs)
+        px, py = perifocal_position_encrypted(cc, ct_a, ct_e, s, c, fp, recip, coeffs,
+                                               on_level if show_levels else None)
         t_total = time.perf_counter() - t_start
 
         px_val, py_val = dec_scalar(cc, keys, px), dec_scalar(cc, keys, py)

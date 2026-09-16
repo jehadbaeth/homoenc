@@ -143,6 +143,13 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
 .sv-lock{ font-size:42px; display:inline-block; }
 .sv-note{ opacity:1; font-family:var(--mono); font-size:11.5px; color:var(--good); background:var(--good-soft); border-radius:6px; padding:6px 10px; margin-top:10px; display:inline-block; }
 
+.gaugewrap{ margin-top:16px; }
+.gauge-label{ font-family:var(--mono); font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
+.gauge-big{ height:16px; border-radius:8px; background:var(--surface); border:1px solid var(--rule); overflow:hidden; position:relative; }
+.gauge-big > i{ position:absolute; inset:0; background:var(--accent); border-radius:6px; transition:width .6s ease; transform-origin:left; }
+.gauge-floor{ position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--bad); }
+.gauge-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--ink-soft); margin-top:5px; }
+
 @media (prefers-reduced-motion: no-preference){
   .sv-in-l{ animation:svInL .5s ease both; }
   .sv-in-r{ animation:svInR .5s ease both; }
@@ -278,7 +285,37 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
       </tbody>
     </table>
     </div>
-    <div class="callout good"><b>0 bootstraps across every query time.</b> Context + keygen: 0.84s. Total wall clock for all 5: 3.86s. The whole 2-iteration solve plus perifocal reconstruction used well under half the 37-level budget &mdash; nowhere near needing a refresh.</div>
+    <div class="callout good"><b>0 bootstraps across every query time.</b> Context + keygen: 0.62s. Total wall clock for all 5: 3.79s. The whole 2-iteration solve plus perifocal reconstruction used well under half the 37-level budget &mdash; nowhere near needing a refresh.</div>
+
+    <h3>The exact level trace (t=+1800s, instrumented run)</h3>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Point</th><th>Level spent</th><th>Remaining (floor=10)</th></tr></thead>
+      <tbody>
+        <tr><td>After NR round 1: sin/cos evaluated</td><td class="mono">4</td><td class="mono">33</td></tr>
+        <tr><td>After NR round 1: E updated</td><td class="mono">11</td><td class="mono">26</td></tr>
+        <tr><td>After NR round 2: sin/cos evaluated</td><td class="mono">16</td><td class="mono">21</td></tr>
+        <tr><td>After NR round 2: E updated</td><td class="mono">23</td><td class="mono">14</td></tr>
+        <tr class="hi"><td>After reconstruct: px,py computed</td><td class="mono">24</td><td class="mono">13</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Why zero, when Approach E needed 11 rounds and 3 bootstraps</h3>
+    <p class="lede">Not because propagation is inherently cheaper than a distance comparison &mdash; the raw distance calculation in Approach E is trivially cheap too, a handful of levels. What's expensive there is everything <i>after</i> the distance: turning a real number into a confident yes/no. CKKS has no comparison operator, so Approach E fakes one by composing <code>g(x)=(3x&minus;x&sup3;)/2</code> on itself 11 times, sharpening a value toward a saturated &plusmn;1 &mdash; each round costs about 3 levels, and 11 rounds is roughly 33 levels against a 15-level per-cycle budget, forcing 3 refills.</p>
+    <p>This page's computation never has to fake a decision. It solves an equation and reconstructs a position &mdash; both are one-shot arithmetic, evaluated once, not sharpened iteratively toward a saturated answer. That's the entire difference: 24 levels spent once, versus roughly 33 levels spent <i>per full sharpening pass</i>, repeated because a single pass isn't confident enough to trust.</p>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th></th><th>Approach E (distance + threshold)</th><th>Kepler (this page)</th></tr></thead>
+      <tbody>
+        <tr><td>What it produces</td><td>a yes/no decision (violation or not)</td><td>a continuous position (km, km)</td></tr>
+        <tr><td>Why it iterates</td><td>faking a comparison CKKS doesn't have</td><td>it doesn't &mdash; two NR rounds, then done</td></tr>
+        <tr><td>Levels per round</td><td class="mono">~3</td><td class="mono">~11&ndash;12</td></tr>
+        <tr><td>Rounds needed</td><td class="mono">11</td><td class="mono">2</td></tr>
+        <tr class="hi"><td>Bootstraps</td><td class="mono">3</td><td class="mono">0</td></tr>
+      </tbody>
+    </table>
+    </div>
     <p>Ring 2<sup>13</sup>, <code>HEStd_NotSet</code> &mdash; demo, insecure parameters, same disclosure as the rest of this project. Measured on an Apple M-series chip (8 cores, macOS/arm64), OpenFHE built from source.</p>
   </section>
 
@@ -347,13 +384,27 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
   var stagecount = document.getElementById('stagecount');
   var btnPlay = document.getElementById('btn-play');
 
+  // Real GetLevel() readings from 17_'s own instrumented run at t=+1800s
+  // (depth=37, bootstraps only when remaining < MIN_LEVELS_FOR_POLY=10).
+  var DEPTH = 37, FLOOR = 10;
+  var REMAINING = [37, 26, 14, 13, 13]; // remaining budget AFTER each node completes
+  function gauge(remaining, note){
+    var pct = (remaining/DEPTH*100).toFixed(1);
+    var floorPct = (FLOOR/DEPTH*100).toFixed(1);
+    return '<div class="gaugewrap"><div class="gauge-label">ciphertext level budget</div>'
+      + '<div class="gauge-big"><i style="width:' + pct + '%"></i><div class="gauge-floor" style="left:' + floorPct + '%"></div></div>'
+      + '<div class="gauge-foot"><span>0</span><span>floor = ' + FLOOR + ' (bootstrap fires here)</span><span>' + remaining + ' / ' + DEPTH + '</span></div>'
+      + (note ? '<div class="sv-result" style="margin-top:8px; font-size:12px;">' + note + '</div>' : '');
+  }
+
   function body(node){
     if (node===0){
       return {
         plain: '<div class="sv-dotrow"><div class="sv-sat a sv-in-l">a,e</div></div>'
-          + '<div class="sv-formula">a=6840.83 km, e=0.0001093 &mdash; plain Python floats, never encrypted.</div>',
+          + '<div class="sv-formula">a=6840.83 km, e=0.0001093 &mdash; plain Python floats, never encrypted. No such thing as a "level" here &mdash; floats don\'t run out of precision this way.</div>',
         cipher: '<div class="sv-dotrow"><div class="sv-sat b sv-in-r">&#128274;</div></div>'
           + '<div class="sv-formula">Enc(a), Enc(e) &mdash; genuinely encrypted under CKKS. These are the only private inputs.</div>'
+          + gauge(37, 'Full budget, nothing spent yet.')
       };
     }
     if (node===1){
@@ -361,7 +412,7 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
         plain: '<div class="sv-formula">E&#8320;=M &rarr; E&#8321;=E&#8320;&minus;(E&#8320;&minus;e sin E&#8320;&minus;M)/(1&minus;e cos E&#8320;)</div>'
           + '<div class="sv-result">sin/cos: degree-10 polynomial (numpy.polyval). Reciprocal: y&#8321;=2&minus;d, free.</div>',
         cipher: '<div class="sv-formula">Same formula, EvalPoly + EvalMult/EvalAdd only &mdash; no division op exists to call.</div>'
-          + '<div class="sv-result">0 bootstraps so far.</div>'
+          + gauge(26, 'One Newton-Raphson round spent 11 levels. Compare: Approach E\'s sign polynomial spends ~3 levels <i>per round</i>, and needs 11 rounds to fake a threshold decision &mdash; this formula never fakes anything, it just evaluates once.')
       };
     }
     if (node===2){
@@ -369,7 +420,7 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
         plain: '<div class="sv-formula">E&#8321; re-evaluated &rarr; E&#8322;</div>'
           + '<div class="sv-result">Converged to ~1&times;10&#8315;&sup1;&sup2; rad vs. exact math.sin/cos.</div>',
         cipher: '<div class="sv-formula">Second Newton-Raphson round, same structure, one more EvalPoly pair.</div>'
-          + '<div class="sv-result">Still 0 bootstraps &mdash; well under the 37-level budget.</div>'
+          + gauge(14, '24 levels spent for the whole solve so far &mdash; still more headroom left (14) than Approach E has in its <i>entire</i> per-cycle budget (15).')
       };
     }
     if (node===3){
@@ -377,7 +428,7 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
         plain: '<div class="sv-formula">r=a(1&minus;e cos E)<br>cos&nu;=(cos E&minus;e)/(1&minus;e cos E)<br>sin&nu;=&radic;(1&minus;e&sup2;) sin E/(1&minus;e cos E)</div>'
           + '<div class="sv-result">px=r cos&nu;, py=r sin&nu; &mdash; no atan2, no branch.</div>',
         cipher: '<div class="sv-formula">Identical formula, evaluated homomorphically on the round-2 ciphertexts.</div>'
-          + '<div class="sv-result">px, py still fully encrypted.</div>'
+          + gauge(13, '13 remaining, floor is 10. This is as deep as the whole computation ever goes &mdash; 3 levels of margin, never crossed.')
       };
     }
     return {
@@ -385,7 +436,7 @@ tr.hi td{ background:var(--good-soft); font-weight:700; }
         + '<div style="text-align:center;"><span class="sv-note">Computed directly &mdash; nothing to decrypt, this lane was never encrypted.</span></div>',
       cipher: '<div style="text-align:center; padding:4px 0;"><span class="sv-lock sv-lockopen">&#128275;</span></div>'
         + '<div class="sv-result" style="text-align:center;">px=6820.303915 km<br>py=&minus;519.813277 km</div>'
-        + '<div style="text-align:center;"><span class="sv-note">Decrypted. Matches the plain-float twin to 6 printed digits. 0 bootstraps, 0.95s.</span></div>'
+        + '<div style="text-align:center;"><span class="sv-note">Decrypted. Matches the plain-float twin to 6 printed digits. 24 of 37 levels spent, floor never reached &mdash; 0 bootstraps, 0.74s.</span></div>'
     };
   }
 
